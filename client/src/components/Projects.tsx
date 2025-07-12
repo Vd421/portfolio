@@ -1,4 +1,5 @@
 import { Bot, Zap, Eye, Leaf, Flame, Plus, ArrowRight, Github } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Projects() {
   const projects = [
@@ -60,6 +61,28 @@ export default function Projects() {
     }
   };
 
+  const trackProjectInteraction = async (projectName: string, interactionType: string) => {
+    try {
+      await apiRequest("/api/projects/interaction", {
+        method: "POST",
+        body: JSON.stringify({
+          projectName,
+          interactionType,
+          ipAddress: null, // This would be set by the server
+          userAgent: navigator.userAgent
+        })
+      });
+    } catch (error) {
+      // Silently fail - don't interrupt user experience
+      console.log("Analytics tracking failed:", error);
+    }
+  };
+
+  const handleGithubClick = async (projectName: string, githubLink: string) => {
+    await trackProjectInteraction(projectName, 'github_click');
+    window.open(githubLink, '_blank');
+  };
+
   return (
     <section id="projects" className="py-20 bg-black">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -75,14 +98,12 @@ export default function Projects() {
                   {project.icon}
                   <h3 className="text-xl font-semibold text-white ml-3">{project.title}</h3>
                 </div>
-                <a 
-                  href={project.githubLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button 
+                  onClick={() => handleGithubClick(project.title, project.githubLink)}
                   className="text-white/60 hover:text-white transition-colors duration-300"
                 >
                   <Github size={20} />
-                </a>
+                </button>
               </div>
               <div className="mb-4">
                 <div className="flex flex-wrap gap-2">

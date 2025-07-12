@@ -8,15 +8,39 @@ import Experience from "@/components/Experience";
 import Education from "@/components/Education";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Portfolio() {
   useEffect(() => {
-    // Add intersection observer for animations
+    // Track portfolio view
+    const trackPortfolioView = async () => {
+      try {
+        await apiRequest("/api/portfolio/view", {
+          method: "POST",
+          body: JSON.stringify({
+            userAgent: navigator.userAgent,
+            pageSection: "initial_load"
+          })
+        });
+      } catch (error) {
+        console.log("Portfolio view tracking failed:", error);
+      }
+    };
+
+    trackPortfolioView();
+
+    // Add intersection observer for animations and section tracking
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           entry.target.style.opacity = '1';
           entry.target.style.transform = 'translateY(0)';
+          
+          // Track section view
+          const sectionId = entry.target.id;
+          if (sectionId) {
+            trackPortfolioView();
+          }
         }
       });
     }, {

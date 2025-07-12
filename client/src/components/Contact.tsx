@@ -1,4 +1,5 @@
 import { Mail, Phone, MapPin } from "lucide-react";
+import ContactForm from "./ContactForm";
 
 export default function Contact() {
   const contactInfo = [
@@ -39,27 +40,42 @@ export default function Contact() {
             Feel free to reach out if you'd like to discuss projects, job opportunities, or just connect!
           </p>
         </div>
-        <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {contactInfo.map((info, index) => (
-              <div key={index} className="glossy-card card-3d rounded-xl p-6 text-center hover:shadow-2xl transition-all duration-300">
-                <div className={`w-16 h-16 ${info.bgColor} rounded-full flex items-center justify-center mx-auto mb-4`}>
-                  {info.icon}
-                </div>
-                <h3 className="text-xl font-semibold text-white mb-2">{info.title}</h3>
-                <p className="text-white/80 mb-4">{info.subtitle}</p>
-                {info.href ? (
-                  <a 
-                    href={info.href}
-                    className={`${info.title === 'Email' ? 'text-blue-400 hover:text-blue-300' : 'text-emerald-400 hover:text-emerald-300'} font-medium`}
-                  >
-                    {info.contact}
-                  </a>
-                ) : (
-                  <p className="text-purple-400 font-medium">{info.contact}</p>
-                )}
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            {/* Contact Info */}
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-8">Get in Touch</h3>
+              <div className="space-y-6">
+                {contactInfo.map((info, index) => (
+                  <div key={index} className="glossy-card card-3d rounded-xl p-6 hover:shadow-2xl transition-all duration-300">
+                    <div className="flex items-center">
+                      <div className={`w-12 h-12 ${info.bgColor} rounded-full flex items-center justify-center mr-4`}>
+                        {info.icon}
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-semibold text-white">{info.title}</h4>
+                        <p className="text-white/60 text-sm">{info.subtitle}</p>
+                        {info.href ? (
+                          <a 
+                            href={info.href}
+                            className={`${info.title === 'Email' ? 'text-blue-400 hover:text-blue-300' : 'text-emerald-400 hover:text-emerald-300'} font-medium`}
+                          >
+                            {info.contact}
+                          </a>
+                        ) : (
+                          <p className="text-purple-400 font-medium">{info.contact}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* Contact Form */}
+            <div>
+              <ContactForm />
+            </div>
           </div>
         </div>
       </div>
