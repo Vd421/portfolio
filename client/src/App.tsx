@@ -1,14 +1,18 @@
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
-import TestPage from "./test-page";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import Portfolio from "@/pages/portfolio";
+import Admin from "@/pages/admin";
+import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/test" component={TestPage} />
-      <Route path="/" component={TestPage} />
-      <Route component={TestPage} />
+      <Route path="/" component={Portfolio} />
+      <Route path="/admin" component={Admin} />
+      <Route component={NotFound} />
     </Switch>
   );
 }
@@ -16,7 +20,10 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
+      <TooltipProvider>
+        <Toaster />
+        <Router />
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }
