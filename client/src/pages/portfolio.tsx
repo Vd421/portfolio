@@ -27,20 +27,17 @@ export default function Portfolio() {
       }
     };
 
-    trackPortfolioView();
+    // Add slight delay to ensure DOM is ready
+    setTimeout(() => {
+      trackPortfolioView();
+    }, 1000);
 
-    // Add intersection observer for animations and section tracking
+    // Add intersection observer for animations
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           entry.target.style.opacity = '1';
           entry.target.style.transform = 'translateY(0)';
-          
-          // Track section view
-          const sectionId = entry.target.id;
-          if (sectionId) {
-            trackPortfolioView();
-          }
         }
       });
     }, {
