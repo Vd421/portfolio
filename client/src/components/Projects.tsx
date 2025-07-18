@@ -1,5 +1,4 @@
 import { Bot, Zap, Eye, Leaf, Flame, Plus, ArrowRight, Github } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
 
 export default function Projects() {
   const projects = [
@@ -63,17 +62,19 @@ export default function Projects() {
 
   const trackProjectInteraction = async (projectName: string, interactionType: string) => {
     try {
-      await apiRequest("/api/projects/interaction", {
+      await fetch("/api/projects/interaction", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           projectName,
           interactionType,
           ipAddress: null, // This would be set by the server
-          userAgent: navigator.userAgent
-        })
+          userAgent: navigator.userAgent,
+        }),
       });
     } catch (error) {
-      // Silently fail - don't interrupt user experience
       console.log("Analytics tracking failed:", error);
     }
   };

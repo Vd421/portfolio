@@ -5,7 +5,7 @@ export default function Skills() {
     {
       title: "Languages",
       icon: <Code className="text-blue-400 text-2xl" />,
-      skills: ["C++", "Python", "Java"],
+      skills: ["C++", "Python", "Java","Embedded c","c","html"],
       bgColor: "bg-blue-900/30",
       textColor: "text-blue-300"
     },

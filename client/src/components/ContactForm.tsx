@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Send, Mail, User, MessageSquare } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({
@@ -23,10 +22,14 @@ export default function ContactForm() {
     setSubmitStatus('idle');
 
     try {
-      await apiRequest("/api/contact", {
+      await fetch("/api/contact", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(formData)
       });
+
       setSubmitStatus('success');
       setFormData({ name: '', email: '', subject: '', message: '' });
     } catch (error) {
