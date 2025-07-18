@@ -8,11 +8,14 @@ if (process.env.NODE_ENV !== 'production') {
   neonConfig.webSocketConstructor = ws;
 }
 
+let db: ReturnType<typeof drizzle> | null = null;
+let pool: Pool | null = null;
+
 if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+  console.warn("Warning: DATABASE_URL not set. Skipping database setup.");
+} else {
+  pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  db = drizzle({ client: pool, schema });
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
+export { db, pool };
