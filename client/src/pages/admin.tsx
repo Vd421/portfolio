@@ -2,6 +2,16 @@ import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Eye, MessageSquare, Activity, TrendingUp } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient"; // adjust path if needed
+
+const { data: stats } = useQuery({
+  queryKey: ["api", "portfolio"],
+});
+
+const { data: messages } = useQuery({
+  queryKey: ["api", "contact"],
+});
 
 interface PortfolioStats {
   totalViews: number;
@@ -30,12 +40,15 @@ export default function Admin() {
     const fetchData = async () => {
       try {
         const [statsResponse, messagesResponse] = await Promise.all([
-          apiRequest("/api/portfolio/stats"),
-          apiRequest("/api/contact/messages")
+          apiRequest("GET", "/api/portfolio/stats"),
+          apiRequest("GET", "/api/contact/messages")
         ]);
         
-        setStats(statsResponse);
-        setMessages(messagesResponse);
+        const statsData = await statsResponse.json();
+        const messagesData = await messagesResponse.json();
+
+        setStats(statsData);
+        setMessages(messagesData);
       } catch (error) {
         console.error("Failed to fetch admin data:", error);
       } finally {
@@ -48,9 +61,7 @@ export default function Admin() {
 
   const markAsRead = async (messageId: number) => {
     try {
-      await apiRequest(`/api/contact/messages/${messageId}/read`, {
-        method: "PATCH"
-      });
+      await apiRequest("PATCH", `/api/contact/messages/${messageId}/read`);
       setMessages(prev => 
         prev.map(msg => 
           msg.id === messageId ? { ...msg, isRead: true } : msg
