@@ -3,16 +3,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Eye, MessageSquare, Activity, TrendingUp } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient"; // adjust path if needed
-
-const { data: stats } = useQuery({
-  queryKey: ["api", "portfolio"],
-});
-
-const { data: messages } = useQuery({
-  queryKey: ["api", "contact"],
-});
-
 interface PortfolioStats {
   totalViews: number;
   totalInteractions: number;
