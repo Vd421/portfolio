@@ -32,7 +32,7 @@
   {#- htmx reads this before it initialises. History snapshots are off because they
       would swap the whole <body> and destroy the persistent header, HUD, palette
       and fx layer; static/js/core/nav.js restores #main itself. -#}
-  <meta name="htmx-config" content='{"historyCacheSize":0,"scrollIntoViewOnBoost":false,"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false,"historyRestoreAsHxRequest":false,"defaultSettleDelay":0}'>
+  <meta name="htmx-config" content='{"historyCacheSize":0,"scrollIntoViewOnBoost":false,"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false,"historyRestoreAsHxRequest":false,"defaultSettleDelay":0,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"404","swap":true,"error":false},{"code":"[45]..","swap":false,"error":true},{"code":"...","swap":false}]}'>
   {% if cdn_script is defined %}{{ cdn_script("htmx") }}{% else %}<script defer src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.11/dist/htmx.min.js" integrity="sha384-2OatzQy1H+Zd/IIrjr1TcuDGqLXeHhbooAyJY1KdQMKnr4LZ22k31GBLdYKHmVjg" crossorigin="anonymous"></script>{% endif %}
   {% if import_map is defined %}{{ import_map() }}{% endif %}
   <script type="module" src="{{ asset('js/main.js') }}"></script>

@@ -5,23 +5,19 @@
 
 import { css, LIVE } from './styles.js';
 
+// Layout while bound comes from B: #work[data-hscroll="on"] (flex track, card widths,
+// gutters). This only adds the progress meter and makes the viewport unscrollable by focus.
 css('hscroll', `
-@media (min-width: 48rem) {
-  ${LIVE} .fx-hs { overflow: clip; }
-  ${LIVE} .fx-hs [data-fx-track] {
-    display: flex !important; flex-wrap: nowrap !important; gap: clamp(16px, 2vw, 32px);
-    width: max-content; max-width: none; grid-template-columns: none;
-  }
-  ${LIVE} .fx-hs [data-fx-track] > * { flex: 0 0 clamp(18rem, 34vw, 32rem); width: auto; }
-  ${LIVE} .fx-hs-meter {
-    display: flex; align-items: center; gap: 12px; margin-block-start: 24px;
-    font: 11px/1 var(--font-mono, ui-monospace, monospace); font-variant-numeric: tabular-nums;
-    color: var(--color-text-tertiary, #5d6673); letter-spacing: 0.08em; text-transform: uppercase;
-  }
-  ${LIVE} .fx-hs-meter b { font-weight: 400; color: var(--color-text, #e8edf3); }
-  ${LIVE} .fx-hs-bar { position: relative; flex: 0 1 240px; height: 1px; background: var(--color-border-strong, #334); overflow: hidden; }
-  ${LIVE} .fx-hs-bar i { position: absolute; inset: 0; background: var(--color-accent, #6ef); transform-origin: 0 50%; transform: scaleX(0); }
+${LIVE} [data-hscroll="on"] .work__viewport, ${LIVE} [data-hscroll="on"] .fx-hs-viewport { overflow: clip; }
+${LIVE} .fx-hs-meter {
+  display: flex; align-items: center; gap: 12px; margin-block-start: 20px;
+  margin-inline: max(var(--gutter, 16px), (100vw - var(--page-max, 80rem)) / 2 + var(--gutter, 16px));
+  font: 11px/1 var(--font-mono, ui-monospace, monospace); font-variant-numeric: tabular-nums;
+  color: var(--color-text-tertiary, #5d6673); letter-spacing: 0.08em; text-transform: uppercase;
 }
+${LIVE} .fx-hs-meter b { font-weight: 400; color: var(--color-text, #e8edf3); }
+${LIVE} .fx-hs-bar { position: relative; flex: 0 1 240px; height: 1px; background: var(--color-border-strong, #334); overflow: hidden; }
+${LIVE} .fx-hs-bar i { position: absolute; inset: 0; background: var(--color-accent, #6ef); transform-origin: 0 50%; transform: scaleX(0); }
 `);
 
 export function hscroll(section, ctx) {
@@ -30,19 +26,20 @@ export function hscroll(section, ctx) {
   if (!track) return undefined;
   const mm = gsap.matchMedia();
   mm.add('(min-width: 48rem)', () => {
-    section.classList.add('fx-hs');
+    section.dataset.hscroll = 'on';
+    const viewport = track.parentElement;
+    viewport.classList.add('fx-hs-viewport');
     const cards = [...track.children];
     const meter = document.createElement('div');
     meter.className = 'fx-hs-meter';
     meter.setAttribute('aria-hidden', 'true');
     meter.innerHTML = `<span><b>01</b> / ${String(cards.length).padStart(2, '0')}</span><span class="fx-hs-bar"><i></i></span><span>scroll</span>`;
-    track.after(meter);
+    viewport.after(meter);
     const count = meter.querySelector('b');
     const fill = meter.querySelector('i');
 
-    // Distance: the last card's right edge lands on the track's own left inset mirrored.
-    const inset = () => track.getBoundingClientRect().left - section.getBoundingClientRect().left;
-    const dist = () => Math.max(0, track.scrollWidth - (section.clientWidth - inset() * 2));
+    // Distance: the track's own inline padding mirrors the gutter at the far end.
+    const dist = () => Math.max(0, track.scrollWidth - viewport.clientWidth);
 
     const tween = gsap.to(track, {
       x: () => -dist(),
@@ -69,10 +66,10 @@ export function hscroll(section, ctx) {
     const onFocus = (e) => {
       const card = cards.find((c) => c.contains(e.target));
       if (!card || !st) return;
-      section.scrollLeft = 0; // clip should prevent it, but never let focus scroll the box
+      viewport.scrollLeft = 0; // clip should prevent it, but never let focus scroll the box
       const d = dist();
       if (!d) return;
-      const viewW = section.clientWidth - inset() * 2;
+      const viewW = viewport.clientWidth;
       const x = gsap.getProperty(track, 'x');
       const left = card.offsetLeft + x;
       if (left >= 0 && left + card.offsetWidth <= viewW) return; // already fully visible
@@ -85,7 +82,8 @@ export function hscroll(section, ctx) {
     return () => {
       track.removeEventListener('focusin', onFocus);
       meter.remove();
-      section.classList.remove('fx-hs');
+      delete section.dataset.hscroll;
+      viewport.classList.remove('fx-hs-viewport');
       gsap.set(track, { clearProps: 'transform' });
     };
   });

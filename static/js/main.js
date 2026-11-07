@@ -10,7 +10,8 @@
 //   5. `vd:motion` re-evaluates everything live: motion off reverts all movement and
 //      stops every loop; motion on rebinds without replaying entrances.
 
-const CORE = ['motion', 'palette', 'nav', 'theme', 'hud', 'ask', 'a11y', 'page'];
+// B's modules, in init order (motion first: everything else asks it). Keep in sync with static/js/core/.
+const CORE = ['motion', 'nav', 'palette'];
 
 /* ---------- motion gate (B's core/motion.js; local fallback until it exists) ---------- */
 
@@ -271,7 +272,25 @@ document.addEventListener('vd:page', async (e) => {
   if (state.first) await bootDone;
   bindPage(root, { entrances: true });
 });
-document.addEventListener('vd:page-leave', () => unbindPage());
+// Leaving: stop at once, but revert DOM changes only after htmx has swapped #main, so
+// the View Transition's "old" snapshot shows the page exactly as the visitor left it
+// (a pinned gallery reverting mid-pin would otherwise flash a different scroll spot).
+document.addEventListener('vd:page-leave', () => {
+  const page = state.page;
+  if (!page) return;
+  page.dead = true;
+  state.page = null;
+  let done = false;
+  const run = () => {
+    if (done) return;
+    done = true;
+    document.removeEventListener('htmx:afterSwap', run);
+    for (const fn of page.cleanups.reverse()) safe('cleanup', fn);
+    page.cleanups.length = 0;
+  };
+  document.addEventListener('htmx:afterSwap', run);
+  setTimeout(run, 1500); // swap cancelled or failed: clean up anyway
+});
 
 function onMotion(allowed) {
   document.documentElement.classList.toggle('fx-live', allowed);

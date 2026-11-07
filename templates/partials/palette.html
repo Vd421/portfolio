@@ -1,5 +1,5 @@
 {%- set ask_on = ask_enabled if ask_enabled is defined else false -%}
-<dialog id="palette" class="palette" aria-label="Command palette" closedby="any" data-ask="{{ 'on' if ask_on else 'off' }}">
+<dialog id="palette" class="palette" hx-boost="false" aria-label="Command palette" closedby="any" data-ask="{{ 'on' if ask_on else 'off' }}">
   <div class="palette__frame">
     <div class="palette__bar">
       <p class="palette__title"><span class="palette__dot" aria-hidden="true"></span>vd://console</p>

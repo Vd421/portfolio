@@ -145,18 +145,21 @@
             <span class="mock__line"></span><span class="mock__line mock__line--short"></span>
             <span class="mock__button"></span>
           </div>
-          {% for ch in cs.chapters if ch.flag %}
-          <span class="console__pin console__pin--{{ ch.flag.severity }}" style="--at: {{ (ch.at / cs.duration) | round(4) }}">{{ ui.icon("error" if ch.flag.severity == "error" else "warning") }}</span>
-          {% endfor %}
+          {% for ch in cs.chapters %}{% if ch.flag %}
+          <span class="console__pin console__pin--{{ ch.flag.severity }}" style="--at: {{ ((ui.flag_at(cs, loop.index0) | int) / cs.duration) | round(4) }}">{{ ui.icon("error" if ch.flag.severity == "error" else "warning") }}</span>
+          {% endif %}{% endfor %}
           <span class="console__cursor">{{ ui.icon("cursor") }}</span>
         </div>
         {% if cs %}
+        {#- The still frame shows the playhead parked on the first flag. -#}
+        {%- set ns = namespace(at=0) -%}
+        {%- for ch in cs.chapters | reverse %}{% if ch.flag %}{% set ns.at = ui.flag_at(cs, cs.chapters | length - loop.index) | int %}{% endif %}{% endfor -%}
         <div class="console__timeline">
-          <p class="console__time"><span>{{ ui.timecode(0) }}</span><span class="console__dur">{{ ui.timecode(cs.duration) }}</span></p>
+          <p class="console__time" aria-hidden="true"><span>{{ ui.timecode(ns.at) }}</span><span class="console__dur">{{ ui.timecode(cs.duration) }}</span></p>
           <div class="console__track" aria-hidden="true">
-            <span class="console__progress"></span>
+            <span class="console__progress" style="--at: {{ (ns.at / cs.duration) | round(4) }}"></span>
             {% for ch in cs.chapters %}<span class="console__tick" style="--at: {{ (ch.at / cs.duration) | round(4) }}"></span>{% endfor %}
-            {% for ch in cs.chapters if ch.flag %}<span class="console__flag console__flag--{{ ch.flag.severity }}" style="--at: {{ (ch.at / cs.duration) | round(4) }}"></span>{% endfor %}
+            {% for ch in cs.chapters %}{% if ch.flag %}<span class="console__flag console__flag--{{ ch.flag.severity }}" style="--at: {{ ((ui.flag_at(cs, loop.index0) | int) / cs.duration) | round(4) }}"></span>{% endif %}{% endfor %}
           </div>
           <ol class="console__chapters" aria-label="Case study chapters">
             {% for ch in cs.chapters %}

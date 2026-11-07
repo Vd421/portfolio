@@ -8,8 +8,6 @@
 {%- set chapters = cs.chapters -%}
 {%- macro sev_icon(sev) -%}{{ ui.icon("error" if sev == "error" else "warning", "flag__icon") }}{%- endmacro -%}
 {%- macro sev_word(sev) -%}{{ "Error" if sev == "error" else "Warning" }}{%- endmacro -%}
-{#- A flag sits halfway through its chapter's span on the replay timeline. -#}
-{%- macro flag_at(i) -%}{% set ch = chapters[i] %}{% set end = chapters[i + 1].at if i + 1 < chapters | length else cs.duration %}{{ ((ch.at + end) / 2) | int }}{%- endmacro -%}
 
 <article class="case" aria-labelledby="case-title">
   <div class="wrap">
@@ -22,7 +20,7 @@
     </nav>
 
     <header class="case__head">
-      <p class="overline"><span class="overline__dot overline__dot--rec" aria-hidden="true"></span>Case study · {{ project.kicker }}</p>
+      <p class="eyebrow"><span class="eyebrow__dot eyebrow__dot--rec" aria-hidden="true"></span>Case study · {{ project.kicker }}</p>
       <h1 class="case__title" id="case-title" tabindex="-1" data-fx="split" data-fx-split="chars">{{ project.title }}</h1>
       <p class="lead case__summary">{{ project.summary }}</p>
       <p class="case__intro">{{ cs.intro }}</p>
@@ -56,12 +54,13 @@
             <input id="replay-scrub" class="player__range js-only" type="range" min="0" max="{{ cs.duration }}" step="1" value="0"
                    aria-valuetext="{{ ui.timecode(0) }}, {{ chapters[0].title }}">
             <div class="player__rail" aria-hidden="true">
-              {% for ch in chapters %}{% if ch.flag %}<span class="player__flag player__flag--{{ ch.flag.severity }}" style="--at: {{ ((flag_at(loop.index0) | int) / cs.duration) | round(4) }}"></span>{% endif %}{% endfor %}
+              {% for ch in chapters %}{% if ch.flag %}<span class="player__flag player__flag--{{ ch.flag.severity }}" style="--at: {{ ((ui.flag_at(cs, loop.index0) | int) / cs.duration) | round(4) }}"></span>{% endif %}{% endfor %}
             </div>
           </div>
           <ol class="player__markers" data-replay-markers aria-label="Chapters">
             {% for ch in chapters %}
-            <li class="marker" style="--at: {{ (ch.at / cs.duration) | round(4) }}">
+            {%- set next_at = cs.duration if loop.last else chapters[loop.index].at %}
+            <li class="marker" style="--at: {{ (ch.at / cs.duration) | round(4) }}; --span: {{ ((next_at - ch.at) / cs.duration) | round(4) }}">
               <a class="marker__link" href="#chapter-{{ ch.id }}">
                 <span class="marker__num" aria-hidden="true">{{ ui.two(loop.index) }}</span>
                 <span class="marker__text"><span class="marker__time">{{ ui.timecode(ch.at) }}</span> <span class="marker__title">{{ ch.title }}</span></span>
@@ -85,7 +84,7 @@
           </div>
         </article>
         {% if ch.flag %}
-        {%- set at = flag_at(i) | int %}
+        {%- set at = ui.flag_at(cs, i) | int %}
         <aside class="flag flag--{{ ch.flag.severity }}" data-flag data-at="{{ at }}" data-severity="{{ ch.flag.severity }}" aria-labelledby="flag-{{ ch.id }}-label">
           <p class="flag__head">
             {{ sev_icon(ch.flag.severity) }}

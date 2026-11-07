@@ -113,7 +113,7 @@
   --text-heading: 1.25rem;  --leading-heading: 1.3;   /* h3 */
   --text-subtitle: clamp(1.5rem, 1.25rem + 1vw, 2rem); --leading-subtitle: 1.2;
   --text-title: clamp(2.25rem, 1.25rem + 4vw, 5rem); --leading-title: 1.1;   /* h2 section titles */
-  --text-display: clamp(3rem, 0.75rem + 9.5vw, 10.5rem); --leading-display: 1.1; /* h1 */
+  --text-display: clamp(3.625rem, 1rem + 8.5vw, 9.5rem); --leading-display: 1.1; /* h1 */
 
   --measure: 66ch;
 
@@ -130,6 +130,11 @@
   --z-header: 50;
   --z-fx: 60;
   --z-boot: 90;
+}
+
+/* The HUD becomes a fixed status bar where there is room for one row. */
+@media (width >= 64rem) {
+  :root { --hud-h: 2rem; }
 }
 
 @media (color-gamut: p3) {

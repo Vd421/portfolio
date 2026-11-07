@@ -2,8 +2,8 @@
   <div class="site-footer__inner">
     <p class="site-footer__sign"><span class="site-footer__handle">{{ site.handle }}</span> {{ site.name }}</p>
     <ul class="site-footer__links">
-      {% for l in site.links %}<li>{{ ui.link(l) }}</li>{% endfor %}
-      <li>{{ ui.link(site.resume) }}</li>
+      {% for l in site.links if not l.is_placeholder %}<li>{{ ui.link(l) }}</li>{% endfor %}
+      {% if not site.resume.is_placeholder %}<li>{{ ui.link(site.resume) }}</li>{% endif %}
     </ul>
     <p class="site-footer__note">Server-rendered and readable without JavaScript.<span class="js-only"> Press <kbd class="kbd">/</kbd> for commands.</span></p>
   </div>

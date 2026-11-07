@@ -15,19 +15,25 @@ const EASE_IN_OUT = 'cubic-bezier(0.4, 0, 0.2, 1)';
 const text = (sel) => document.querySelector(sel)?.textContent.replace(/\s+/g, ' ').trim() || '';
 
 function collect() {
-  const name = text('[data-boot="name"]')
+  let data = {};
+  try { data = JSON.parse(document.getElementById('vd-data')?.textContent || '{}'); } catch { /* none */ }
+  const site = data.site ?? {};
+  const name = site.name
+    || text('[data-boot="name"]')
     || document.querySelector('meta[name="author"]')?.content
     || text('#site-header [data-brand]')
     || text('#main h1');
-  let roles = [...document.querySelectorAll('[data-boot="role"]')].map((n) => n.textContent.trim()).filter(Boolean);
+  let roles = Array.isArray(site.roles) ? site.roles.slice() : [];
+  if (!roles.length) roles = [...document.querySelectorAll('[data-boot="role"]')].map((n) => n.textContent.trim()).filter(Boolean);
   if (!roles.length) roles = [...document.querySelectorAll('[data-roles] li')].map((n) => n.textContent.trim()).filter(Boolean);
   const build = text('[data-hud="build"]');
   const region = text('[data-hud="region"]');
-  const projects = document.querySelectorAll('#work [data-fx-track] > *').length;
+  const projects = (Array.isArray(data.projects) && data.projects.length) || document.querySelectorAll('#work [data-fx-track] > *').length;
+  const base = site.location || '';
   let gl = 'unavailable';
   if ('WebGL2RenderingContext' in window) gl = navigator.connection?.saveData ? 'skipped (save-data)' : 'webgl2';
   const vw = `${innerWidth}×${innerHeight} @${Math.round(devicePixelRatio * 100) / 100}x`;
-  return { name, roles, build, region, projects, gl, vw };
+  return { name, roles, build, region, projects, gl, vw, base };
 }
 
 css('boot', `
@@ -123,6 +129,7 @@ export function runBoot(boot) {
     ['sys', 'VD/OS operator interface', 'cold boot'],
     d.name && ['identity', d.name, ''],
     d.roles.length && ['roles', d.roles.join(' / '), ''],
+    d.base && ['base', d.base, ''],
     (d.build || d.region) && ['build', [d.build, d.region && `region ${d.region}`].filter(Boolean).join('  · '), ''],
     d.projects && ['index', `${d.projects} projects`, 'ok'],
     ['renderer', d.gl, d.gl === 'webgl2' ? 'ok' : ''],

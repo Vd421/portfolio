@@ -15,15 +15,13 @@ const loadSplit = (gsap) => (splitText ??= import('gsap/SplitText.js').then((m) 
 }));
 
 css('text', `
-${LIVE} .fx-scr { position: relative; }
 ${LIVE} .fx-scr-o {
-  position: absolute; inset: 0; pointer-events: none; white-space: pre;
-  color: var(--fx-scr-color, currentColor); font: inherit; letter-spacing: inherit; text-transform: inherit;
-  display: flex; align-items: center; justify-content: inherit;
-  opacity: 0;
+  position: absolute; pointer-events: none; white-space: pre; overflow: visible;
+  color: var(--fx-scr-color, currentColor); -webkit-text-fill-color: var(--fx-scr-color, currentColor);
 }
-${LIVE} .fx-scr[data-scrambling] { color: transparent !important; -webkit-text-fill-color: transparent; }
-${LIVE} .fx-scr[data-scrambling] > .fx-scr-o { opacity: 1; -webkit-text-fill-color: var(--fx-scr-color, currentColor); }
+/* Hide only the label's own glyphs (children with their own color keep it). */
+${LIVE} .fx-scr-host[data-scrambling] { color: transparent !important; -webkit-text-fill-color: transparent; }
+${LIVE} .fx-scr-host[data-scrambling] > * { -webkit-text-fill-color: initial; }
 ${LIVE} .fx-split-mask { padding-block: 0.08em; margin-block: -0.08em; }
 `);
 
@@ -68,24 +66,54 @@ export async function split(el, ctx) {
 
 const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/<>_-+=*#';
 
+// The longest text node that carries the label (direct child, or inside a single
+// wrapper). Index chips and icons beside it are left alone.
+function labelNode(el) {
+  let best = null;
+  const walk = (node, depth) => {
+    for (const n of node.childNodes) {
+      if (n.nodeType === 3 && n.textContent.trim() && (!best || n.textContent.trim().length > best.textContent.trim().length)) best = n;
+      else if (n.nodeType === 1 && depth < 2 && !n.matches('svg, [aria-hidden="true"], .sr-only')) walk(n, depth + 1);
+    }
+  };
+  walk(el, 0);
+  return best;
+}
+
 export function scramble(el, { gsap }) {
-  const real = el.textContent.replace(/\s+/g, ' ').trim();
+  const node = labelNode(el);
+  const real = node?.textContent.replace(/\s+/g, ' ').trim() ?? '';
   if (!real || real.length > 64) return undefined;
-  el.classList.add('fx-scr');
+  const host = node.parentElement;
   const o = document.createElement('span');
   o.className = 'fx-scr-o';
   o.setAttribute('aria-hidden', 'true');
-  el.append(o);
   let running = false;
   let tween = null;
+  let madeRelative = false;
 
   const run = () => {
     if (running) return;
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const rects = range.getClientRects();
     // Single-line labels only: an overlay cannot follow a wrapped inline box.
-    if (el.getClientRects().length > 1) return;
+    if (rects.length !== 1) return;
     running = true;
-    el.style.setProperty('--fx-scr-color', getComputedStyle(el).color);
-    el.dataset.scrambling = '';
+    const r = rects[0];
+    if (getComputedStyle(el).position === 'static') { el.style.position = 'relative'; madeRelative = true; }
+    const er = el.getBoundingClientRect();
+    const cs = getComputedStyle(host);
+    Object.assign(o.style, {
+      left: `${r.left - er.left - el.clientLeft}px`, top: `${r.top - er.top - el.clientTop}px`,
+      width: `${r.width + 2}px`, height: `${r.height}px`,
+      font: cs.font, letterSpacing: cs.letterSpacing, textTransform: cs.textTransform,
+      fontVariationSettings: cs.fontVariationSettings,
+    });
+    el.style.setProperty('--fx-scr-color', cs.color);
+    el.append(o);
+    host.classList.add('fx-scr-host');
+    host.dataset.scrambling = '';
     const st = { p: 0 };
     let last = -1;
     tween = gsap.to(st, {
@@ -93,7 +121,7 @@ export function scramble(el, { gsap }) {
       duration: Math.min(0.45, 0.18 + real.length * 0.012),
       ease: 'none',
       onUpdate() {
-        const frame = Math.floor(st.p * 24); // ~step the glyph churn, not every frame
+        const frame = Math.floor(st.p * 24); // step the glyph churn, not every frame
         if (frame === last) return;
         last = frame;
         const n = Math.floor(real.length * st.p);
@@ -101,12 +129,14 @@ export function scramble(el, { gsap }) {
         for (let i = n; i < real.length; i++) s += real[i] === ' ' ? ' ' : GLYPHS[(Math.random() * GLYPHS.length) | 0];
         o.textContent = s;
       },
-      onComplete() {
-        delete el.dataset.scrambling;
-        o.textContent = '';
-        running = false;
-      },
+      onComplete: done,
     });
+  };
+  const done = () => {
+    delete host.dataset.scrambling;
+    o.textContent = '';
+    o.remove();
+    running = false;
   };
   el.addEventListener('pointerenter', run);
   el.addEventListener('focus', run);
@@ -114,9 +144,9 @@ export function scramble(el, { gsap }) {
     el.removeEventListener('pointerenter', run);
     el.removeEventListener('focus', run);
     tween?.kill();
-    o.remove();
-    el.classList.remove('fx-scr');
-    delete el.dataset.scrambling;
+    done();
+    host.classList.remove('fx-scr-host');
+    if (madeRelative) el.style.position = '';
     el.style.removeProperty('--fx-scr-color');
   };
 }

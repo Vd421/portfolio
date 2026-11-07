@@ -15,7 +15,9 @@ export function reveal(el, { gsap, ScrollTrigger, entrances }) {
     onEnter: (batch) => gsap.to(batch, {
       opacity: 1, y: 0, filter: 'blur(0px)',
       duration: 0.3, ease: 'vd-out', stagger: 0.1, overwrite: true,
-      clearProps: 'opacity,transform,filter',
+      // Transform is left at its (identity) end value: tilt/magnetic on the same element
+      // keep their gsap transform cache (perspective) intact.
+      clearProps: 'opacity,filter',
     }),
   });
   return () => {

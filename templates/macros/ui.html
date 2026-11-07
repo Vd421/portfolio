@@ -120,3 +120,8 @@
 {% macro date_range(start, end) -%}
 <span class="dates">{{ val(start) }}<span class="dates__sep" aria-hidden="true"> – </span><span class="sr-only"> to </span>{% if end is none %}<span class="dates__now">Present</span>{% else %}{{ val(end) }}{% endif %}</span>
 {%- endmacro %}
+
+{#- Where a chapter's flag sits on the replay timeline: halfway through the chapter's span. -#}
+{% macro flag_at(cs, i) -%}
+{%- set ch = cs.chapters[i] -%}{%- set end = cs.chapters[i + 1].at if i + 1 < cs.chapters | length else cs.duration -%}{{ ((ch.at + end) / 2) | int }}
+{%- endmacro %}
