@@ -40,7 +40,7 @@
 
 {% macro media(m) -%}
 {% if m.is_placeholder -%}
-<figure class="media media--slot">
+<figure class="media media--slot" data-vt="media">
   <div class="media__frame" aria-hidden="true">
     <span class="media__grid"></span>
     <span class="media__mark">{{ icon("file") }}</span>
@@ -48,7 +48,7 @@
   <figcaption class="media__caption">{{ todo(m.src) }}<span class="media__alt"><span class="media__alt-tag">Alt text</span> {{ m.alt }}</span>{% if m.caption %}<span>{{ val(m.caption) }}</span>{% endif %}</figcaption>
 </figure>
 {%- else -%}
-<figure class="media" data-fx="distort">
+<figure class="media" data-fx="distort" data-vt="media">
   {% if m.kind == "video" %}<video src="{{ asset(m.src) }}" controls preload="metadata" aria-label="{{ m.alt }}"{% if m.width %} width="{{ m.width }}" height="{{ m.height }}"{% endif %}></video>
   {% else %}<img src="{{ asset(m.src) }}" alt="{{ m.alt }}" loading="lazy" decoding="async"{% if m.width %} width="{{ m.width }}" height="{{ m.height }}"{% endif %}>{% endif %}
   {% if m.caption %}<figcaption class="media__caption">{{ val(m.caption) }}</figcaption>{% endif %}
@@ -95,7 +95,7 @@
     <span class="card__category">{{ category(p.category) }}</span>
     {% if p.case_study %}<span class="badge badge--accent">Case study</span>{% endif %}
   </header>
-  <h3 class="card__title"><a class="card__link" href="/work/{{ p.slug }}">{{ p.title }}</a></h3>
+  <h3 class="card__title" data-vt="title"><a class="card__link" href="/work/{{ p.slug }}">{{ p.title }}</a></h3>
   <p class="card__kicker">{{ p.kicker }}</p>
   {{ para(p.summary, "card__summary") }}
   {% if p.highlights %}

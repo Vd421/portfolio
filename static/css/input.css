@@ -138,6 +138,19 @@
   :where(.hero__inner, .featured__copy, .project__head, .case__head, .lost__inner, .about__side, .timeline__body) { grid-template-columns: minmax(0, 1fr); }
   :where(.hero__inner, .featured__copy, .project__head, .case__head, .lost__inner) > * { max-inline-size: 100%; }
 
+  /* Boot-flash guard (see base.html). Only an inline script sets data-boot, so
+     this can never apply without JavaScript; the failsafe uncovers the page after
+     3.5 s if Engineer C's boot.js never takes over. */
+  html[data-boot="pending"] #boot {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-boot);
+    background-color: var(--color-bg);
+    animation: vd-boot-failsafe 0s linear 3.5s forwards;
+  }
+  @keyframes vd-boot-failsafe { to { visibility: hidden; } }
+
   .wrap {
     inline-size: 100%;
     max-inline-size: var(--page-max);
@@ -346,7 +359,6 @@
     font-stretch: 110%;
     white-space: nowrap;
     cursor: pointer;
-    user-select: none;
     transition-property: background-color, border-color, color, box-shadow, scale;
     transition-duration: var(--dur-fast);
     transition-timing-function: ease-out;
@@ -598,8 +610,9 @@
     letter-spacing: -0.02em;
   }
   .brand__v { color: var(--color-accent-text); }
-  .brand__name { display: none; }
-  @media (width >= 22rem) { .brand__name { display: inline; } }
+  @media (width < 22rem) {
+    .brand__name { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  }
 
   .site-nav { display: contents; }
   .site-nav__list {
@@ -875,9 +888,9 @@
     align-content: end;
     gap: 2.5rem;
     min-block-size: calc(100svh - var(--header-h) - var(--hud-h));
-    max-inline-size: var(--page-max);
-    margin-inline: auto;
-    padding: clamp(3rem, 1rem + 5vw, 6rem) var(--gutter) 2rem;
+    padding-block: clamp(3rem, 1rem + 5vw, 6rem) 2rem;
+    /* Full-bleed section; content holds to the page column through its padding. */
+    padding-inline: max(var(--gutter), (100% - var(--page-max)) / 2 + var(--gutter));
   }
   @media (width >= 64rem) {
     .hero {
@@ -892,14 +905,11 @@
     position: absolute;
     inset: 0;
     z-index: -1;
-    inline-size: 100vw;
-    inset-inline-start: 50%;
-    translate: -50% 0;
     overflow: hidden;
     pointer-events: none;
   }
-  [dir="rtl"] #hero-stage { translate: 50% 0; }
   #hero-stage canvas { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
+  #hero-stage::after { z-index: 1; pointer-events: none; }
 
   .poster { position: absolute; inset: 0; }
   .poster > * { position: absolute; }
@@ -966,8 +976,9 @@
     mix-blend-mode: overlay;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
-  /* Scrim behind the text column so every pair is measured against near-bg. */
-  .poster::after {
+  /* Scrim behind the text column so every pair is measured against near-bg.
+     It sits on the stage, above the poster and above Engineer C's canvas. */
+  #hero-stage::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -975,11 +986,10 @@
   }
   .poster__mark { color: var(--color-text-tertiary); text-transform: uppercase; z-index: 1; }
   .poster__mark--a { inset-block-start: 12%; inset-inline-end: calc(6% + min(64vmin, 46rem) + 1rem); }
-  .poster__mark--b { inset-block-start: 12%; inset-inline-end: 2%; writing-mode: vertical-rl; }
   @media (width < 48rem) {
     .poster__scope { inline-size: 120vw; inset-inline-end: -55%; inset-block-start: 4%; opacity: 0.55; }
     .poster__mark { display: none; }
-    .poster::after { background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--color-bg) 70%, transparent) 40%, var(--color-bg) 85%); }
+    #hero-stage::after { background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--color-bg) 70%, transparent) 40%, var(--color-bg) 85%); }
     .poster__field { inset-block: 10% 30%; mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent); }
   }
 
@@ -1268,7 +1278,7 @@
   #work[data-hscroll="on"] .work__track {
     display: flex;
     inline-size: max-content;
-    padding-inline: max(var(--gutter), (100vw - var(--page-max)) / 2 + var(--gutter));
+    padding-inline: max(var(--gutter), (100% - var(--page-max)) / 2 + var(--gutter));
   }
   #work[data-hscroll="on"] .card { inline-size: min(26rem, 80vw); flex: none; }
 
@@ -1755,7 +1765,7 @@
   .lost { position: relative; isolation: isolate; overflow: hidden; min-block-size: calc(100svh - var(--header-h) - var(--hud-h)); display: grid; align-items: center; padding-block: 4rem; }
   .lost__scope { position: absolute; z-index: -1; inline-size: min(110vmin, 60rem); aspect-ratio: 1; inset-inline-end: -12%; inset-block-start: 50%; translate: 0 -50%; opacity: 0.8; }
   .lost__scope::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, transparent 40%, var(--color-bg) 72%); }
-  .lost__blip { position: absolute; inset-inline-start: 30%; inset-block-start: 34%; inline-size: 0.625rem; block-size: 0.625rem; border-radius: 50%; background-color: var(--color-danger); box-shadow: 0 0 0 6px color-mix(in oklab, var(--color-danger) 18%, transparent), 0 0 24px var(--color-danger); }
+  .lost__blip { position: absolute; inset-inline-start: 64%; inset-block-start: 22%; inline-size: 0.625rem; block-size: 0.625rem; border-radius: 50%; background-color: var(--color-danger); box-shadow: 0 0 0 6px color-mix(in oklab, var(--color-danger) 18%, transparent), 0 0 24px var(--color-danger); }
   .lost__inner { display: grid; gap: 1.5rem; justify-items: start; }
   .lost__code { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; color: var(--color-text-tertiary); }
   .lost__method { color: var(--color-text-secondary); }

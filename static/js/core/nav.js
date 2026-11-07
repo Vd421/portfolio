@@ -157,13 +157,19 @@ export function navigate(url) {
     samePageHash(href);
     return;
   }
+  // htmx reads hx-* from the element (and its ancestors) again when the response
+  // arrives, so the anchor carries them itself and stays attached until then.
   const a = document.createElement('a');
   a.href = href.href;
   a.hidden = true;
+  a.setAttribute('hx-boost', 'true');
+  for (const attr of ['hx-select', 'hx-target', 'hx-swap']) a.setAttribute(attr, document.body.getAttribute(attr));
   document.body.append(a);
   window.htmx.process(a);
+  const done = () => a.remove();
+  a.addEventListener('htmx:afterRequest', () => setTimeout(done, 0), { once: true });
+  setTimeout(done, 30_000);
   a.click();
-  a.remove();
 }
 
 function samePageHash(url) {

@@ -111,7 +111,8 @@ function scrambleInto(node, final, p) {
 }
 
 export function runBoot(boot) {
-  const t0 = performance.now();
+  let t0 = performance.now();
+  let started = false;
   const d = collect();
   const html = document.documentElement;
   html.dataset.boot = 'run';
@@ -223,6 +224,7 @@ export function runBoot(boot) {
     boot.querySelector('.fx-boot-skip').addEventListener('click', () => finish(true));
 
     const frame = (now) => {
+      if (!started) { started = true; t0 = now; } // clock starts on the first painted frame
       const el = now - t0;
       for (const r of rows) {
         if (r.done || el < r.start) continue;

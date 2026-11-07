@@ -227,7 +227,8 @@ function start(stage, ctx, src) {
   sky.renderOrder = -1;
   scene.add(sky);
 
-  const forced = Number(new URLSearchParams(location.search).get('fx-tier'));
+  const q = new URLSearchParams(location.search).get('fx-tier');
+  const forced = q === null ? NaN : Number(q);
   let tierIdx = Number.isInteger(forced) && TIERS[forced] ? forced : initialTier();
   let geo = null;
   let pointsObj = null;
@@ -254,24 +255,24 @@ function start(stage, ctx, src) {
   let ca = null;
   const buildPost = () => {
     composer?.dispose();
+    composer = null;
     const tier = TIERS[tierIdx];
     const debug = shared.uDebug.value > 0.5;
+    // Low tier and debug render straight to the canvas: no extra full-screen passes.
+    // (The shaders end in <colorspace_fragment>, so colours match either way.)
+    if (!tier.bloom || debug) { bloom = null; ca = null; resize(); return; }
     composer = new EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
     composer.addPass(new RenderPass(scene, camera));
     const effects = [];
     bloom = null;
     ca = null;
-    if (tier.bloom && !debug) {
-      bloom = new BloomEffect({ mipmapBlur: true, luminanceThreshold: 0.9, luminanceSmoothing: 0.12, intensity: 0.85, radius: 0.6, levels: 5 });
-      effects.push(bloom);
-    }
+    bloom = new BloomEffect({ mipmapBlur: true, luminanceThreshold: 0.9, luminanceSmoothing: 0.12, intensity: 0.85, radius: 0.6, levels: 5 });
+    effects.push(bloom);
     effects.push(new VignetteEffect({ offset: 0.32, darkness: 0.62 }));
-    if (tier.bloom && !debug) {
-      const grain = new NoiseEffect({ premultiply: true, blendFunction: BlendFunction.SCREEN });
-      grain.blendMode.opacity.value = 0.18;
-      effects.push(grain);
-    }
-    if (tier.ca && !debug) {
+    const grain = new NoiseEffect({ premultiply: true, blendFunction: BlendFunction.SCREEN });
+    grain.blendMode.opacity.value = 0.18;
+    effects.push(grain);
+    if (tier.ca) {
       ca = new ChromaticAberrationEffect({ offset: new THREE.Vector2(0.0005, 0.0003), radialModulation: true, modulationOffset: 0.25 });
       effects.push(ca);
     }
@@ -353,6 +354,7 @@ function start(stage, ctx, src) {
   let win = [];
   let cooldown = 90;
   let fast = 0;
+  let slow = 0;
   const camPos = new THREE.Vector3(0, 2.1, 5.4);
   const look = new THREE.Vector3(0, 0, -3);
   let px = 0, py = 0;
@@ -367,7 +369,13 @@ function start(stage, ctx, src) {
     if (avg > 21) {
       if (dpr > 1) dpr = Math.max(1, Math.round((dpr - 0.25) * 4) / 4);
       else if (tierIdx > 0) { setTier(tierIdx - 1); }
-      else return;
+      else {
+        // Floor reached. A device that still cannot hold ~25 fps gets the static poster
+        // instead of a stuttering scene (unless a tier was forced for testing).
+        slow = avg > 40 ? slow + 1 : 0;
+        if (slow >= 3 && !Number.isInteger(forced)) retire();
+        return;
+      }
       resize();
       cooldown = 60;
       fast = 0;
@@ -416,7 +424,8 @@ function start(stage, ctx, src) {
     camera.lookAt(look);
 
     renderer.info.reset();
-    composer.render(dt);
+    if (composer) composer.render(dt);
+    else renderer.render(scene, camera);
 
     if (first) {
       first = false;
@@ -431,9 +440,17 @@ function start(stage, ctx, src) {
     }
   };
 
+  const retire = () => {
+    broken = true;
+    gsap.ticker.remove(frame);
+    gsap.to(canvas, { opacity: 0, duration: 0.6, ease: 'vd-out' });
+    for (const p of posters) gsap.to(p, { opacity: 1, duration: 0.6, ease: 'vd-out', clearProps: 'opacity' });
+    stage.dataset.webglState = 'poster';
+  };
+
   const sync = () => {
     const should = visible && !document.hidden;
-    if (should === running) return;
+    if (should === running || broken) return;
     running = should;
     if (should) gsap.ticker.add(frame);
     else gsap.ticker.remove(frame);
@@ -476,6 +493,7 @@ function start(stage, ctx, src) {
     gsap.killTweensOf(canvas);
     for (const p of posters) { gsap.killTweensOf(p); p.style.opacity = ''; }
     delete stage.dataset.webglReady;
+    delete stage.dataset.webglState;
     delete stage.fxField;
     dbg?.remove();
     composer?.dispose();

@@ -284,11 +284,12 @@ document.addEventListener('vd:page-leave', () => {
   const run = () => {
     if (done) return;
     done = true;
-    document.removeEventListener('htmx:afterSwap', run);
     for (const fn of page.cleanups.reverse()) safe('cleanup', fn);
     page.cleanups.length = 0;
   };
-  document.addEventListener('htmx:afterSwap', run);
+  // Out of the View Transition's update callback, so teardown never delays the swap.
+  const later = () => setTimeout(run, 0);
+  document.addEventListener('htmx:afterSwap', later, { once: true });
   setTimeout(run, 1500); // swap cancelled or failed: clean up anyway
 });
 

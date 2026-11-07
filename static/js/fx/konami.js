@@ -16,9 +16,13 @@ css('konami', `
   background: color-mix(in oklab, var(--color-bg, #05070a) 82%, transparent);
   border: 1px solid var(--color-border-strong, #334); border-radius: 6px;
   backdrop-filter: blur(8px);
-  transition-property: opacity, translate; transition-duration: 150ms; transition-timing-function: ease-out;
+  transition: opacity 150ms ease-out;
 }
-.fx-log[data-hidden] { opacity: 0; translate: 0 -12px; }
+.fx-log[data-hidden] { opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-motion="still"]) .fx-log { transition-property: opacity, translate; }
+  :root:not([data-motion="still"]) .fx-log[data-hidden] { translate: 0 -12px; }
+}
 .fx-log li::before { content: "› "; color: var(--color-text-tertiary, #5d6673); }
 `);
 

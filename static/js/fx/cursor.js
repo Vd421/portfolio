@@ -119,6 +119,7 @@ export function startCursor({ gsap }) {
     show(!paletteOpen);
   };
   let rehit = false;
+  let restWritten = false;
   const onScroll = () => { rehit = true; };
 
   addEventListener('pointermove', onMove, { passive: true });
@@ -160,6 +161,11 @@ export function startCursor({ gsap }) {
       [b.x, b.vx] = spring(b.x, b.vx, px, 160, sdt);
       [b.y, b.vy] = spring(b.y, b.vy, py, 160, sdt);
     }
+    // At rest: no writes, so an idle cursor costs no style/composite work.
+    const settled = Math.abs(b.vx) + Math.abs(b.vy) < 0.5 && Math.abs(b.x - px) + Math.abs(b.y - py) < 0.1
+      && corners.every((c, i) => Math.abs(c.vx) + Math.abs(c.vy) < 0.5 && Math.abs(c.x - T[i][0]) + Math.abs(c.y - T[i][1]) < 0.1);
+    if (settled && restWritten) return;
+    restWritten = settled;
     // Writes.
     corners.forEach((c, i) => { ks[i].style.transform = `translate3d(${c.x.toFixed(2)}px, ${c.y.toFixed(2)}px, 0)`; });
     dot.style.transform = `translate3d(${px}px, ${py}px, 0)`;

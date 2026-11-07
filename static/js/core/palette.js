@@ -236,7 +236,7 @@ function dates(r) {
 /* ---------- ask (SSE) ---------- */
 
 const ERRORS = {
-  offline: () => 'AI answers are offline right now. Type help to see the built-in commands.',
+  offline: () => `AI answers are offline right now. Type help to see the built-in commands, or email ${data.site.email ?? 'vd'}.`,
   rate_limited: () => 'That’s a lot of questions in a short time. Wait a few minutes, then ask again.',
   invalid: () => `Questions can be 1 to ${MAX_QUESTION} characters. Shorten it and try again.`,
   upstream: () => 'Unable to get an answer from the AI service. Try again in a moment, or type help for built-in commands.',
@@ -321,10 +321,12 @@ async function ask(question) {
   let text = '';
   let outcome = 'interrupted';
 
+  // Any error discards the partial answer (an error after tokens is a refusal).
+  // The server writes visitor-facing messages; ours are the fallback.
   const fail = (codeName, message) => {
     entry.remove();
-    const fn = ERRORS[codeName] ?? ERRORS.upstream;
-    notice(fn(message), codeName === 'offline' || codeName === 'rate_limited' || codeName === 'invalid' ? 'notice' : 'error');
+    const text = typeof message === 'string' && message.trim() ? message.trim() : (ERRORS[codeName] ?? ERRORS.upstream)();
+    notice(text, codeName === 'offline' || codeName === 'rate_limited' || codeName === 'invalid' ? 'notice' : 'error');
   };
 
   try {
@@ -334,11 +336,14 @@ async function ask(question) {
       body: JSON.stringify({ question, history: asked.slice(-MAX_HISTORY) }),
       signal,
     });
-    if (!res.ok || !res.body) {
-      let codeName = res.status === 429 ? 'rate_limited' : res.status === 422 || res.status === 400 ? 'invalid' : 'upstream';
-      try { const j = await res.json(); if (j?.code && ERRORS[j.code]) codeName = j.code; } catch { /* not JSON */ }
+    const isStream = (res.headers.get('content-type') ?? '').includes('text/event-stream');
+    // 429 answers JSON before streaming; every other answer (422/413 included) is SSE.
+    if (!res.body || !isStream) {
+      let codeName = res.status === 429 ? 'rate_limited' : res.status === 422 || res.status === 413 || res.status === 400 ? 'invalid' : 'upstream';
+      let message;
+      try { const j = await res.json(); if (j?.code && ERRORS[j.code]) codeName = j.code; message = j?.message; } catch { /* not JSON */ }
       outcome = 'error';
-      fail(codeName);
+      fail(codeName, message);
       return;
     }
     for await (const ev of events(res.body, signal)) {

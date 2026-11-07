@@ -1,4 +1,3 @@
-precision highp float;
 uniform vec3 uColorBase;
 uniform vec3 uColorAccent;
 uniform vec3 uColorHot;
@@ -20,4 +19,5 @@ void main() {
   if (uDebug > 0.5) { col = uColorAccent; a = vAlpha * step(max(abs(c.x), abs(c.y)), 0.5); }
   if (a < 0.01) discard;
   gl_FragColor = vec4(col * a, a);
+  #include <colorspace_fragment>
 }

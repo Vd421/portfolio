@@ -28,6 +28,10 @@
   <link rel="preload" href="{{ asset('fonts/mona-sans.woff2') }}" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="{{ asset('fonts/martian-mono.woff2') }}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ asset('dist/app.css') }}">
+  {#- Boot-flash guard: cover the first paint only when Engineer C's boot sequence will run
+      (first visit this session, motion allowed). C's boot.js takes the cover over and
+      clears data-boot; CSS hides the cover after 3.5 s if that never happens. -#}
+  <script nonce="{{ csp_nonce if csp_nonce is defined else '' }}">(function(){try{if(sessionStorage.getItem("vd:booted"))return}catch(e){return}var s=null;try{s=localStorage.getItem("vd:motion")}catch(e){}if(s!=="still"&&matchMedia("(prefers-reduced-motion: no-preference)").matches)document.documentElement.dataset.boot="pending"})()</script>
 
   {#- htmx reads this before it initialises. History snapshots are off because they
       would swap the whole <body> and destroy the persistent header, HUD, palette

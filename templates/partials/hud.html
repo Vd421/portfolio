@@ -10,7 +10,7 @@
       <dt>UTC</dt>
       <dd>{% if st %}<time data-hud="clock" data-tz="utc" datetime="{{ st.server_time }}">{{ ui.clock(st.server_time) }}</time>{% else %}<span data-hud="clock" data-tz="utc">--:--:--</span>{% endif %}</dd>
     </div>
-    <div class="hud__item">
+    <div class="hud__item hud__item--wide">
       <dt>Uptime</dt>
       <dd data-hud="uptime"{% if st %} data-value="{{ st.uptime_s }}"{% endif %}>{% if st %}{{ ui.uptime(st.uptime_s) }}{% else %}--:--:--{% endif %}</dd>
     </div>
