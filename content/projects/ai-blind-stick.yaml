@@ -1,0 +1,15 @@
+slug: ai-blind-stick
+title: AI Blind Stick
+kicker: Assistive navigation hardware
+summary: A walking aid that senses obstacles with ultrasonic sensors and guides its user around them.
+category: embedded
+stack: [Embedded C, Arduino, Ultrasonic sensors, Pathfinding]
+links:
+  - label: Source on GitHub
+    href: "TODO: repository URL"
+    kind: repo
+highlights:
+  - label: Obstacle detection accuracy
+    value: 90%
+    verified: false
+order: 5

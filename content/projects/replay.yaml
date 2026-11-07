@@ -1,0 +1,62 @@
+slug: replay
+title: Replay
+kicker: Session replay with AI bug flagging
+summary: Records real user sessions, plays them back, and has an AI model flag the moments where something broke.
+description:
+  - Replay captures what users actually do in a web app and turns it into a scrubbable recording. An AI pass watches the recording and flags likely bugs, so you jump straight to the moment it went wrong instead of reading logs.
+  - "TODO: one paragraph on why you built it and who it is for."
+year: "TODO: year"
+role: "TODO: your role, e.g. solo build"
+category: ai
+stack: ["TODO: stack, e.g. TypeScript, rrweb, FastAPI, Claude API"]
+links:
+  - label: Source on GitHub
+    href: "TODO: Replay repository URL"
+    kind: repo
+  - label: Live demo
+    href: "TODO: Replay demo URL"
+    kind: live
+highlights: []
+media:
+  - src: "TODO: screenshot of the Replay player"
+    alt: The Replay player showing a recorded session with an AI bug flag on the timeline
+featured: true
+order: 1
+case_study:
+  duration: 180
+  intro: This page plays like a Replay session. Scroll or drag the playhead to move through the build, and watch for the flags.
+  chapters:
+    - id: problem
+      at: 0
+      title: Session start
+      body:
+        - Bug reports say what someone thinks happened. A recording shows what actually happened.
+        - "TODO: the specific pain that started this project."
+    - id: capture
+      at: 30
+      title: Capturing the session
+      body:
+        - "TODO: how Replay records DOM changes, input and network events, and how it keeps recordings small."
+    - id: playback
+      at: 70
+      title: Rebuilding the playback
+      body:
+        - "TODO: how the player reconstructs the page and keeps the timeline scrubbable."
+      flag:
+        severity: warning
+        label: Possible rage click
+        detail: "TODO: an example flag Replay raised during playback."
+    - id: ai
+      at: 110
+      title: Teaching it to spot bugs
+      body:
+        - "TODO: how the AI pass works: what it sees, what it flags, and how you keep false positives down."
+      flag:
+        severity: error
+        label: AI bug detected
+        detail: "TODO: an example of a real bug Replay caught."
+    - id: outcome
+      at: 150
+      title: What it changed
+      body:
+        - "TODO: results, only with numbers you can stand behind."

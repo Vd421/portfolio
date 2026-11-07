@@ -1,0 +1,11 @@
+slug: memory-chatbot
+title: Companion Chatbot
+kicker: Conversational AI with memory
+summary: A chatbot that remembers past conversations and can generate images mid-chat.
+category: ai
+stack: [Python, Flask, GPT, DALL·E]
+links:
+  - label: Source on GitHub
+    href: "TODO: repository URL"
+    kind: repo
+order: 7

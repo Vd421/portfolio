@@ -1,0 +1,30 @@
+- company: HCLTech
+  client: MetLife
+  title: "TODO: job title"
+  kind: full-time
+  start: "TODO: start month"
+  end: null
+  location: "TODO: location"
+  summary: "TODO: what you build for MetLife, in one or two sentences."
+  stack: []
+- company: Hapticware
+  title: GenAI Intern
+  kind: internship
+  start: "TODO: start month"
+  end: "TODO: end month"
+  summary: "TODO: what you built with generative AI at Hapticware."
+  stack: []
+- company: Vertex Info Soft
+  title: Software Developer Intern
+  kind: internship
+  start: Oct 2023
+  end: Nov 2023
+  summary: Built and optimized application modules with an emphasis on testing and debugging.
+  highlights:
+    - label: Module performance
+      value: 30% faster through code and algorithm optimization
+      verified: false
+    - label: Bug reduction
+      value: 40% fewer defects through testing and debugging
+      verified: false
+  stack: []

@@ -1,0 +1,34 @@
+name: Vaibhav Dhir
+handle: vd
+roles:
+  - Forward Deployed Engineer
+  - Solutions Engineer
+  - Full Stack AI Developer
+tagline: I build AI systems that ship, then sit with the people using them until they work.
+about:
+  - Electrical and Electronics Engineering graduate from VIT Chennai, now at HCLTech building for MetLife.
+  - "My work sits where AI meets real users: session replay that flags bugs on its own, career tools grounded in real data, and computer vision that runs on actual hardware."
+  - "TODO: one or two sentences in your own voice about how you work with customers and teams."
+location: Delhi, India
+email: vaibhavdhir01@gmail.com
+availability: "TODO: availability line, e.g. open to Forward Deployed and Solutions Engineering roles"
+links:
+  - label: GitHub
+    href: https://github.com/Vd421
+    kind: social
+  - label: LinkedIn
+    href: "TODO: LinkedIn profile URL"
+    kind: social
+  - label: Email
+    href: mailto:vaibhavdhir01@gmail.com
+    kind: mail
+resume:
+  label: Resume (PDF)
+  href: "TODO: add resume PDF to static/ and link it here"
+  kind: doc
+education:
+  - degree: B.Tech
+    field: Electrical and Electronics Engineering
+    institution: VIT Chennai
+    start: "2021"
+    end: "2025"

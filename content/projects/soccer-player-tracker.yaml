@@ -1,0 +1,13 @@
+slug: soccer-player-tracker
+title: Soccer Player Tracker
+kicker: Real-time multi-object tracking
+summary: Tracks every player through a soccer match in real time, keeping identities stable across frames.
+description:
+  - Detection with YOLOv8, then re-identification so each player keeps the same ID when they cross, get occluded, or leave and re-enter the frame.
+category: cv
+stack: [Python, YOLOv8, Re-ID, OpenCV]
+links:
+  - label: Source on GitHub
+    href: "TODO: repository URL"
+    kind: repo
+order: 3

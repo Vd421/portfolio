@@ -1,0 +1,15 @@
+slug: fire-fighter-bot
+title: Fire Fighter Bot
+kicker: Autonomous detection and response
+summary: An Arduino robot that finds a fire with fused sensor readings, drives to it and puts it out.
+category: embedded
+stack: [Arduino, Embedded C, Sensor fusion]
+links:
+  - label: Source on GitHub
+    href: "TODO: repository URL"
+    kind: repo
+highlights:
+  - label: Fire detection accuracy
+    value: 95%
+    verified: false
+order: 6

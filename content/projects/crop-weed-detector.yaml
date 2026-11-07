@@ -1,0 +1,15 @@
+slug: crop-weed-detector
+title: Crop and Weed Detector
+kicker: Precision agriculture vision
+summary: Tells crops from weeds in field images so treatment goes only where it is needed, with a desktop GUI for operators.
+category: cv
+stack: [Python, YOLOv3, OpenCV, Tkinter]
+links:
+  - label: Source on GitHub
+    href: "TODO: repository URL"
+    kind: repo
+highlights:
+  - label: Detection accuracy
+    value: 98%
+    verified: false
+order: 4

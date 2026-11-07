@@ -1,6 +1,14 @@
-node_modules
-dist
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+# Build output
+bin/
+static/dist/
+# Env
+.env
 .DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz

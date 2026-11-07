@@ -1,0 +1,14 @@
+slug: careerpilot-ai
+title: CareerPilot AI
+kicker: AI career copilot
+summary: "TODO: one-sentence summary of CareerPilot AI."
+description:
+  - "TODO: what CareerPilot does, who it is for, and how it works."
+category: ai
+stack: ["TODO: stack"]
+links:
+  - label: Source on GitHub
+    href: "TODO: CareerPilot repository URL"
+    kind: repo
+featured: false
+order: 2

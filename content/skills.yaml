@@ -1,0 +1,8 @@
+- name: Languages
+  items: [Python, C++, Java, C, Embedded C, HTML]
+- name: AI and computer vision
+  items: [PyTorch, TensorFlow, OpenCV, YOLOv8, YOLOv3, LLM APIs]
+- name: Web and backend
+  items: [FastAPI, Flask, React]
+- name: Hardware
+  items: [Arduino, Ultrasonic sensors, Sensor fusion]
