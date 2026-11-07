@@ -1,0 +1,24 @@
+<header id="site-header" class="site-header">
+  <div class="site-header__inner">
+    <a class="brand" href="/" data-fx="magnetic" data-fx-strength="0.2">
+      <span class="brand__mark" aria-hidden="true"><span class="brand__v">v</span><span class="brand__d">d</span></span>
+      <span class="brand__name">{{ site.name }}</span>
+      <span class="sr-only">, home</span>
+    </a>
+
+    <nav class="site-nav" aria-label="Primary">
+      <button type="button" class="site-nav__toggle js-only" id="nav-toggle" aria-expanded="false" aria-controls="nav-list">
+        {{ ui.icon("menu") }}<span>Menu</span>
+      </button>
+      <ul class="site-nav__list" id="nav-list">
+        {% for href, label in [("/#work", "Work"), ("/#experience", "Experience"), ("/#about", "About"), ("/#contact", "Contact")] %}
+        <li><a class="site-nav__link" href="{{ href }}" data-fx="scramble">{{ label }}</a></li>
+        {% endfor %}
+      </ul>
+    </nav>
+
+    <button type="button" class="palette-trigger js-only" id="palette-open" aria-haspopup="dialog" aria-controls="palette" aria-keyshortcuts="Control+K Meta+K /">
+      {{ ui.icon("command") }}<span class="palette-trigger__label">Commands</span><kbd class="kbd" aria-hidden="true">/</kbd>
+    </button>
+  </div>
+</header>

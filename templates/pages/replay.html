@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}{{ project.title }} case study · Work · {{ site.name }}{% endblock %}
+{% block description %}{{ project.kicker }}. {{ project.summary }}{% endblock %}
+{% block og_type %}article{% endblock %}
+
+{% block main %}
+{%- set cs = project.case_study -%}
+{%- set chapters = cs.chapters -%}
+{%- macro sev_icon(sev) -%}{{ ui.icon("error" if sev == "error" else "warning", "flag__icon") }}{%- endmacro -%}
+{%- macro sev_word(sev) -%}{{ "Error" if sev == "error" else "Warning" }}{%- endmacro -%}
+{#- A flag sits halfway through its chapter's span on the replay timeline. -#}
+{%- macro flag_at(i) -%}{% set ch = chapters[i] %}{% set end = chapters[i + 1].at if i + 1 < chapters | length else cs.duration %}{{ ((ch.at + end) / 2) | int }}{%- endmacro -%}
+
+<article class="case" aria-labelledby="case-title">
+  <div class="wrap">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="/">Home</a></li>
+        <li><a href="/#work">Work</a></li>
+        <li><span aria-current="page">{{ project.title }}</span></li>
+      </ol>
+    </nav>
+
+    <header class="case__head">
+      <p class="overline"><span class="overline__dot overline__dot--rec" aria-hidden="true"></span>Case study · {{ project.kicker }}</p>
+      <h1 class="case__title" id="case-title" tabindex="-1" data-fx="split" data-fx-split="chars">{{ project.title }}</h1>
+      <p class="lead case__summary">{{ project.summary }}</p>
+      <p class="case__intro">{{ cs.intro }}</p>
+      {% include "partials/project_meta.html" %}
+    </header>
+  </div>
+
+  <section id="replay" class="replay" data-replay data-duration="{{ cs.duration }}" aria-label="Session replay">
+    <div class="replay__layout wrap">
+      <div class="player" data-replay-player>
+        <div class="player__stage" data-replay-stage aria-hidden="true">
+          <div class="player__chrome"><span class="console__lights"><i></i><i></i><i></i></span><span class="player__url">replay://{{ project.slug }}</span><span class="console__rec">REC</span></div>
+          <div class="player__screen">
+            <div class="mock">
+              <span class="mock__nav"></span>
+              <span class="mock__hero"></span>
+              <span class="mock__row"><i></i><i></i><i></i></span>
+              <span class="mock__line"></span><span class="mock__line mock__line--short"></span>
+              <span class="mock__button"></span>
+            </div>
+            <span class="player__cursor" data-replay-cursor>{{ ui.icon("cursor") }}</span>
+          </div>
+        </div>
+
+        <div class="player__controls">
+          <div class="player__readout">
+            <label class="player__label js-only" for="replay-scrub">Playhead</label>
+            <p class="player__time"><output data-replay-time for="replay-scrub">00:00</output><span class="player__dur"><span aria-hidden="true"> / </span><span class="sr-only"> of </span>{{ ui.timecode(cs.duration) }}</span></p>
+          </div>
+          <div class="player__track">
+            <input id="replay-scrub" class="player__range js-only" type="range" min="0" max="{{ cs.duration }}" step="1" value="0"
+                   aria-valuetext="{{ ui.timecode(0) }}, {{ chapters[0].title }}">
+            <div class="player__rail" aria-hidden="true">
+              {% for ch in chapters %}{% if ch.flag %}<span class="player__flag player__flag--{{ ch.flag.severity }}" style="--at: {{ ((flag_at(loop.index0) | int) / cs.duration) | round(4) }}"></span>{% endif %}{% endfor %}
+            </div>
+          </div>
+          <ol class="player__markers" data-replay-markers aria-label="Chapters">
+            {% for ch in chapters %}
+            <li class="marker" style="--at: {{ (ch.at / cs.duration) | round(4) }}">
+              <a class="marker__link" href="#chapter-{{ ch.id }}">
+                <span class="marker__num" aria-hidden="true">{{ ui.two(loop.index) }}</span>
+                <span class="marker__text"><span class="marker__time">{{ ui.timecode(ch.at) }}</span> <span class="marker__title">{{ ch.title }}</span></span>
+              </a>
+            </li>
+            {% endfor %}
+          </ol>
+        </div>
+      </div>
+
+      <div class="replay__log">
+        {% for ch in chapters %}
+        {%- set i = loop.index0 %}
+        <article class="chapter" id="chapter-{{ ch.id }}" data-chapter data-at="{{ ch.at }}" aria-labelledby="chapter-{{ ch.id }}-title">
+          <header class="chapter__head">
+            <p class="chapter__stamp"><span class="chapter__num">{{ ui.two(loop.index) }}</span><time class="chapter__time" datetime="PT{{ ch.at // 60 }}M{{ ch.at % 60 }}S">{{ ui.timecode(ch.at) }}</time></p>
+            <h2 class="chapter__title" id="chapter-{{ ch.id }}-title" data-fx="kinetic">{{ ch.title }}</h2>
+          </header>
+          <div class="chapter__body prose">
+            {% for p in ch.body %}{{ ui.para(p) }}{% endfor %}
+          </div>
+        </article>
+        {% if ch.flag %}
+        {%- set at = flag_at(i) | int %}
+        <aside class="flag flag--{{ ch.flag.severity }}" data-flag data-at="{{ at }}" data-severity="{{ ch.flag.severity }}" aria-labelledby="flag-{{ ch.id }}-label">
+          <p class="flag__head">
+            {{ sev_icon(ch.flag.severity) }}
+            <span class="flag__severity">{{ sev_word(ch.flag.severity) }}</span>
+            <span class="flag__time"><span class="sr-only">at </span>{{ ui.timecode(at) }}</span>
+          </p>
+          <p class="flag__label" id="flag-{{ ch.id }}-label">{{ ch.flag.label }}</p>
+          {{ ui.para(ch.flag.detail, "flag__detail") }}
+        </aside>
+        {% endif %}
+        {% endfor %}
+        <p class="replay__end"><span class="replay__end-line" aria-hidden="true"></span>End of session · {{ ui.timecode(cs.duration) }}</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <section class="case__about" aria-labelledby="about-project">
+      <h2 class="subhead" id="about-project">About the project</h2>
+      <div class="prose">{% for p in project.description %}{{ ui.para(p) }}{% endfor %}</div>
+      {% if project.highlights %}<dl class="metrics metrics--large">{% for h in project.highlights %}{{ ui.highlight(h) }}{% endfor %}</dl>{% endif %}
+      {% if project.media %}<div class="gallery">{% for m in project.media %}{{ ui.media(m) }}{% endfor %}</div>{% endif %}
+    </section>
+    {% include "partials/project_next.html" %}
+  </div>
+</article>
+{% endblock %}

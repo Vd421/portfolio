@@ -1,0 +1,50 @@
+{%- set ask_on = ask_enabled if ask_enabled is defined else false -%}
+<dialog id="palette" class="palette" aria-label="Command palette" closedby="any" data-ask="{{ 'on' if ask_on else 'off' }}">
+  <div class="palette__frame">
+    <div class="palette__bar">
+      <p class="palette__title"><span class="palette__dot" aria-hidden="true"></span>vd://console</p>
+      <p class="palette__ask" data-state="{{ 'online' if ask_on else 'offline' }}">AI answers {{ "online" if ask_on else "offline" }}</p>
+      <button type="button" class="icon-btn" data-palette-close aria-label="Close command palette">{{ ui.icon("close") }}</button>
+    </div>
+    <ol id="palette-log" class="palette__log">
+      <li class="log-entry log-entry--system">
+        <p>Run a command, or ask anything about {{ site.name.split(" ")[0] }}’s work. Type <code>help</code> to list commands.</p>
+      </li>
+    </ol>
+    <form id="palette-form" class="palette__form" autocomplete="off">
+      <label for="palette-input" class="palette__label">Command or question</label>
+      <div class="palette__row">
+        <span class="palette__prompt" aria-hidden="true">{{ site.handle }} ›</span>
+        <input id="palette-input" name="q" type="text" class="palette__input" maxlength="500" placeholder="help" spellcheck="false" autocapitalize="off" autocorrect="off" enterkeyhint="send" aria-describedby="palette-hint">
+        <button type="submit" class="btn btn--small btn--primary" data-palette-run>Run</button>
+        <button type="button" class="btn btn--small btn--danger" data-palette-stop hidden>{{ ui.icon("stop") }}Stop</button>
+      </div>
+      <p id="palette-hint" class="palette__hint">Up and Down recall earlier commands. Esc closes.</p>
+    </form>
+  </div>
+</dialog>
+
+{#- Built-in palette commands read this. Only real values: TODO placeholders become null. -#}
+{%- set data = {
+  "site": {
+    "name": site.name, "handle": site.handle, "roles": site.roles, "tagline": site.tagline,
+    "location": site.location, "email": site.email,
+    "availability": none if site.availability is todo else site.availability,
+    "links": [], "resume": none if site.resume.is_placeholder else site.resume.href,
+    "education": []
+  },
+  "projects": [], "experience": [], "skills": [],
+  "featured": content.featured.slug if content.featured else none,
+  "ask": ask_on
+} -%}
+{%- for l in site.links if not l.is_placeholder %}{% set _ = data.site.links.append({"label": l.label, "href": l.href, "kind": l.kind}) %}{% endfor -%}
+{%- for e in site.education %}{% set _ = data.site.education.append({"degree": e.degree, "field": e.field, "institution": e.institution, "start": e.start, "end": e.end}) %}{% endfor -%}
+{%- for p in content.projects_ordered %}{% set _ = data.projects.append({"slug": p.slug, "title": p.title, "kicker": p.kicker, "summary": none if p.summary is todo else p.summary, "category": p.category, "case_study": p.case_study is not none}) %}{% endfor -%}
+{%- for r in content.experience %}{% set _ = data.experience.append({
+  "company": r.company, "client": r.client,
+  "title": none if r.title is todo else r.title, "kind": r.kind,
+  "start": none if r.start is todo else r.start,
+  "end": "present" if r.end is none else (none if r.end is todo else r.end)
+}) %}{% endfor -%}
+{%- for g in content.skills %}{% set _ = data.skills.append({"name": g.name, "items": g.items}) %}{% endfor -%}
+<script type="application/json" id="vd-data">{{ data | tojson }}</script>

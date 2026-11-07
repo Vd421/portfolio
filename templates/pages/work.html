@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ project.title }} · Work · {{ site.name }}{% endblock %}
+{% block description %}{{ project.kicker }}. {% if project.summary is not todo %}{{ project.summary }}{% endif %}{% endblock %}
+{% block og_type %}article{% endblock %}
+
+{% block main %}
+<article class="project" aria-labelledby="project-title">
+  <div class="wrap">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="/">Home</a></li>
+        <li><a href="/#work">Work</a></li>
+        <li><span aria-current="page">{{ project.title }}</span></li>
+      </ol>
+    </nav>
+
+    <header class="project__head">
+      <p class="overline"><span class="overline__dot" aria-hidden="true"></span>{{ project.kicker }}</p>
+      <h1 class="project__title" id="project-title" tabindex="-1" data-fx="split" data-fx-split="chars">{{ project.title }}</h1>
+      {{ ui.para(project.summary, "lead project__summary") }}
+    </header>
+
+    <div class="project__grid">
+      <div class="project__body prose">
+        {% if project.description %}
+          <h2 class="subhead">Overview</h2>
+          {% for p in project.description %}{{ ui.para(p) }}{% endfor %}
+        {% endif %}
+
+        {% if project.highlights %}
+          <h2 class="subhead">Results</h2>
+          <dl class="metrics metrics--large">{% for h in project.highlights %}{{ ui.highlight(h) }}{% endfor %}</dl>
+        {% endif %}
+
+        {% if project.media %}
+          <h2 class="subhead">Media</h2>
+          <div class="gallery">{% for m in project.media %}{{ ui.media(m) }}{% endfor %}</div>
+        {% endif %}
+      </div>
+
+      <aside class="project__side panel panel--ticks" aria-label="Project facts">
+        <p class="panel__label">Spec sheet</p>
+        {% include "partials/project_meta.html" %}
+      </aside>
+    </div>
+
+    {% include "partials/project_next.html" %}
+  </div>
+</article>
+{% endblock %}

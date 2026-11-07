@@ -1,0 +1,198 @@
+/*
+ * vd interface tokens. Dark-only by design.
+ *
+ * Tier 1 primitives name a value (hue + step) and are never used in components.
+ * Tier 2 roles name a job; templates, CSS and WebGL (Engineer C) read only these.
+ *
+ * Ramps were generated in OKLCH with coloraide (constant hue, chroma peaking
+ * mid-ramp). Steps outside sRGB are declared as their sRGB fit first and
+ * upgraded to the vivid value under (color-gamut: p3).
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* ---------- Primitives ---------- */
+
+  /* Neutral, cool near-black, hue 250 */
+  --neutral-950: oklch(0.115 0.01 250);
+  --neutral-900: oklch(0.145 0.012 250);
+  --neutral-850: oklch(0.178 0.014 250);
+  --neutral-800: oklch(0.215 0.016 250);
+  --neutral-700: oklch(0.3 0.018 250);
+  --neutral-600: oklch(0.42 0.02 250);
+  --neutral-500: oklch(0.54 0.02 250);
+  --neutral-400: oklch(0.68 0.017 250);
+  --neutral-300: oklch(0.8 0.013 250);
+  --neutral-200: oklch(0.89 0.009 250);
+  --neutral-100: oklch(0.955 0.005 250);
+
+  /* Accent, phosphor cyan-green, hue 165 */
+  --accent-950: oklch(0.235 0.045 165);
+  --accent-700: #007c59; /* sRGB fit of oklch(0.52 0.11 165) */
+  --accent-500: oklch(0.74 0.14 165);
+  --accent-400: oklch(0.86 0.15 165);
+  --accent-300: oklch(0.92 0.105 165);
+
+  /* Danger, hue 25: "AI bug detected" flags */
+  --danger-950: oklch(0.235 0.055 25);
+  --danger-500: oklch(0.64 0.2 25);
+  --danger-400: oklch(0.72 0.17 25);
+  --danger-300: #ffaba3; /* sRGB fit of oklch(0.82 0.105 25) */
+
+  /* Warning, hue 75: degraded status, warning flags */
+  --warning-950: oklch(0.24 0.04 75);
+  --warning-500: oklch(0.76 0.15 75);
+  --warning-400: oklch(0.82 0.15 75);
+  --warning-300: #ffce8a; /* sRGB fit of oklch(0.88 0.11 75) */
+
+  /* ---------- Roles (names fixed by CONTRACTS.md) ---------- */
+
+  --color-bg: var(--neutral-900);
+  --color-bg-raised: var(--neutral-850);
+  --color-bg-sunken: var(--neutral-950);
+  --color-border: var(--neutral-700);
+  --color-border-strong: var(--neutral-500);
+  --color-text: var(--neutral-100);
+  --color-text-secondary: var(--neutral-300);
+  --color-text-tertiary: var(--neutral-400);
+  --color-accent: var(--accent-400);
+  --color-accent-text: var(--accent-400);
+  --color-accent-glow: var(--accent-500);
+  --color-on-accent: var(--neutral-950);
+  --color-danger: var(--danger-400);
+  --color-danger-text: var(--danger-300);
+  --color-warning: var(--warning-400);
+  --color-warning-text: var(--warning-300);
+  --color-focus: var(--accent-300);
+
+  /* Roles added by B (not read by C) */
+  --color-bg-hover: var(--neutral-800);
+  --color-separator: var(--neutral-800);
+  --color-accent-hover: var(--accent-300);
+  --color-accent-subtle: var(--accent-950);
+  --color-accent-border: var(--accent-700);
+  --color-danger-subtle: var(--danger-950);
+  --color-danger-border: var(--danger-500);
+  --color-warning-subtle: var(--warning-950);
+  --color-warning-border: var(--warning-500);
+
+  /* ---------- Surfaces ---------- */
+
+  /* Dark appearance: one white ring, depth shadows vanish on near-black */
+  --shadow-border: 0 0 0 1px oklch(1 0 0 / 0.08);
+  --shadow-border-hover: 0 0 0 1px oklch(1 0 0 / 0.13);
+  --shadow-raised: 0 0 0 1px oklch(1 0 0 / 0.08), 0 16px 48px -12px oklch(0 0 0 / 0.7);
+  --image-outline: oklch(1 0 0 / 0.1);
+
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+
+  /* ---------- Motion ---------- */
+
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-instant: 100ms;
+  --dur-fast: 150ms;
+  --dur-base: 300ms;
+  --dur-slow: 600ms;
+
+  /* ---------- Type ---------- */
+
+  --font-sans: "Mona Sans", "Mona Sans Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Martian Mono", "Martian Mono Fallback", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Semantic scale. Each size pairs with a line-height. */
+  --text-label: 0.75rem;    --leading-label: 1.4;    /* mono HUD, overlines */
+  --text-caption: 0.8125rem; --leading-caption: 1.45;
+  --text-small: 0.875rem;   --leading-small: 1.5;
+  --text-body: 1rem;        --leading-body: 1.6;
+  --text-lead: clamp(1.125rem, 1.05rem + 0.4vw, 1.375rem); --leading-lead: 1.5;
+  --text-heading: 1.25rem;  --leading-heading: 1.3;   /* h3 */
+  --text-subtitle: clamp(1.5rem, 1.25rem + 1vw, 2rem); --leading-subtitle: 1.2;
+  --text-title: clamp(2.25rem, 1.25rem + 4vw, 5rem); --leading-title: 1.1;   /* h2 section titles */
+  --text-display: clamp(3rem, 0.75rem + 9.5vw, 10.5rem); --leading-display: 1.1; /* h1 */
+
+  --measure: 66ch;
+
+  /* ---------- Layout ---------- */
+
+  --gutter: clamp(1rem, 0.5rem + 2.5vw, 3rem);
+  --page-max: 90rem;
+  --header-h: 3.5rem;
+  --hud-h: 0px; /* becomes the status bar height where the HUD is fixed */
+
+  /* ---------- Z layers ---------- */
+
+  --z-hud: 40;
+  --z-header: 50;
+  --z-fx: 60;
+  --z-boot: 90;
+}
+
+@media (color-gamut: p3) {
+  :root {
+    --accent-700: oklch(0.52 0.11 165);
+    --danger-300: oklch(0.82 0.105 25);
+    --warning-300: oklch(0.88 0.11 75);
+  }
+}
+
+/* Dark-only, so increased contrast has one block. */
+@media (prefers-contrast: more) {
+  :root {
+    --color-text-secondary: var(--neutral-200);
+    --color-text-tertiary: var(--neutral-300);
+    --color-border: var(--neutral-500);
+    --color-border-strong: var(--neutral-400);
+    --color-separator: var(--neutral-600);
+    --shadow-border: 0 0 0 1px oklch(1 0 0 / 0.3);
+    --shadow-border-hover: 0 0 0 1px oklch(1 0 0 / 0.45);
+  }
+}
+
+/* ---------- Fonts ---------- */
+
+@font-face {
+  font-family: "Mona Sans";
+  src: url("../fonts/mona-sans.woff2") format("woff2-variations"), url("../fonts/mona-sans.woff2") format("woff2");
+  font-weight: 200 900;
+  font-stretch: 75% 125%;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Martian Mono";
+  src: url("../fonts/martian-mono.woff2") format("woff2-variations"), url("../fonts/martian-mono.woff2") format("woff2");
+  font-weight: 100 800;
+  font-stretch: 75% 112.5%;
+  font-style: normal;
+  font-display: swap;
+}
+
+/*
+ * Metric-matched fallbacks, measured with fontTools against Arial/Liberation Sans
+ * and Courier New/Liberation Mono: average advance of a mixed-case sample at
+ * Mona Sans wght 400 wdth 100 (0.520 em vs 0.506) and Martian Mono wdth 100
+ * (0.700 em vs 0.600). Ascent/descent are the web fonts' hhea values ÷ size-adjust.
+ */
+@font-face {
+  font-family: "Mona Sans Fallback";
+  src: local("Arial"), local("Liberation Sans"), local("Helvetica");
+  size-adjust: 102.75%;
+  ascent-override: 106.08%;
+  descent-override: 31.14%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Martian Mono Fallback";
+  src: local("Courier New"), local("Liberation Mono"), local("Menlo");
+  size-adjust: 116.67%;
+  ascent-override: 85.71%;
+  descent-override: 17.14%;
+  line-gap-override: 0%;
+}

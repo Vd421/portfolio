@@ -1,0 +1,40 @@
+{%- set st = status if status is defined else none -%}
+{%- set ask = st.ask if st else ("online" if ask_enabled is defined and ask_enabled else "offline") -%}
+<aside id="hud" class="hud" aria-label="System status">
+  <dl class="hud__list">
+    <div class="hud__item hud__item--status">
+      <dt class="sr-only">Status</dt>
+      <dd><span class="hud__state" data-hud="status" data-state="{{ st.status if st else 'unknown' }}">{{ st.status if st else "standby" }}</span></dd>
+    </div>
+    <div class="hud__item">
+      <dt>UTC</dt>
+      <dd>{% if st %}<time data-hud="clock" data-tz="utc" datetime="{{ st.server_time }}">{{ ui.clock(st.server_time) }}</time>{% else %}<span data-hud="clock" data-tz="utc">--:--:--</span>{% endif %}</dd>
+    </div>
+    <div class="hud__item">
+      <dt>Uptime</dt>
+      <dd data-hud="uptime"{% if st %} data-value="{{ st.uptime_s }}"{% endif %}>{% if st %}{{ ui.uptime(st.uptime_s) }}{% else %}--:--:--{% endif %}</dd>
+    </div>
+    <div class="hud__item hud__item--wide">
+      <dt>Build</dt>
+      <dd data-hud="build">{{ st.build[:7] if st else "local" }}</dd>
+    </div>
+    <div class="hud__item hud__item--wide">
+      <dt>Region</dt>
+      <dd data-hud="region">{{ st.region if st else "local" }}</dd>
+    </div>
+    <div class="hud__item">
+      <dt>Ask</dt>
+      <dd><span class="hud__state" data-hud="ask" data-state="{{ ask }}">{{ ask }}</span></dd>
+    </div>
+    <div class="hud__item hud__item--fps js-only">
+      <dt>FPS</dt>
+      <dd data-hud="fps"></dd>
+    </div>
+  </dl>
+  <div class="hud__motion js-only">
+    <button type="button" id="motion-toggle" class="hud__toggle" aria-pressed="true" aria-describedby="motion-state">
+      <span class="hud__switch" aria-hidden="true"></span>Motion
+    </button>
+    <span id="motion-state" class="hud__motion-state">Live</span>
+  </div>
+</aside>

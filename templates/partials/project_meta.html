@@ -1,0 +1,12 @@
+{#- Shared header facts for work and case-study pages. Expects `project`. -#}
+<dl class="facts">
+  <div class="facts__item"><dt>Category</dt><dd>{{ ui.category(project.category) }}</dd></div>
+  {% if project.year %}<div class="facts__item"><dt>Year</dt><dd>{{ ui.val(project.year) }}</dd></div>{% endif %}
+  {% if project.role %}<div class="facts__item"><dt>Role</dt><dd>{{ ui.val(project.role) }}</dd></div>{% endif %}
+  {% if project.stack %}<div class="facts__item facts__item--wide"><dt>Stack</dt><dd>{{ ui.stack(project.stack, "Stack") }}</dd></div>{% endif %}
+</dl>
+{% if project.links %}
+<ul class="project-links">
+  {% for l in project.links %}<li>{{ ui.link(l, "project-links__link") }}</li>{% endfor %}
+</ul>
+{% endif %}

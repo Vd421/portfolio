@@ -1,0 +1,122 @@
+{#- Repeated interface patterns. Every content value passes through these so
+    TODO placeholders and unverified claims always render visibly. -#}
+
+{% macro icon(name, cls="") -%}
+<svg class="icon {{ cls }}" aria-hidden="true" focusable="false"><use href="#i-{{ name }}"/></svg>
+{%- endmacro %}
+
+{#- The text after "TODO", without the prefix and separator. -#}
+{% macro todo_hint(value) -%}
+{{ value[4:] | trim | trim(":") | trim | trim("—") | trim }}
+{%- endmacro %}
+
+{#- Inline TODO chip: shows Vaibhav exactly what is missing. -#}
+{% macro todo(value) -%}
+<span class="todo"><span class="todo__tag">TODO</span>{% set hint = todo_hint(value) %}{% if hint %}<span class="todo__text">{{ hint }}</span>{% endif %}</span>
+{%- endmacro %}
+
+{#- A value that may be a placeholder. -#}
+{% macro val(value) -%}
+{% if value is todo %}{{ todo(value) }}{% else %}{{ value }}{% endif %}
+{%- endmacro %}
+
+{#- A paragraph that may be a placeholder. -#}
+{% macro para(value, cls="") -%}
+{% if value is todo %}<p class="todo-block {{ cls }}">{{ todo(value) }}</p>{% else %}<p class="{{ cls }}">{{ value }}</p>{% endif %}
+{%- endmacro %}
+
+{% macro unverified() -%}
+<span class="unverified" title="Carried over from an earlier resume and not yet confirmed">Unverified</span>
+{%- endmacro %}
+
+{#- A content link. Placeholder hrefs render as a marked, non-clickable slot. -#}
+{% macro link(l, cls="", fx="scramble") -%}
+{% if l.is_placeholder -%}
+<span class="link-slot {{ cls }}"><span class="link-slot__label">{{ l.label }}</span>{{ todo(l.href) }}</span>
+{%- else -%}
+<a class="link {{ cls }}" href="{{ l.href }}"{% if fx %} data-fx="{{ fx }}"{% endif %}>{{ l.label }}{% if l.href.startswith('http') %}{{ icon("arrow-up-right", "icon--trail") }}{% endif %}</a>
+{%- endif %}
+{%- endmacro %}
+
+{% macro media(m) -%}
+{% if m.is_placeholder -%}
+<figure class="media media--slot">
+  <div class="media__frame" aria-hidden="true">
+    <span class="media__grid"></span>
+    <span class="media__mark">{{ icon("file") }}</span>
+  </div>
+  <figcaption class="media__caption">{{ todo(m.src) }}<span class="media__alt"><span class="media__alt-tag">Alt text</span> {{ m.alt }}</span>{% if m.caption %}<span>{{ val(m.caption) }}</span>{% endif %}</figcaption>
+</figure>
+{%- else -%}
+<figure class="media" data-fx="distort">
+  {% if m.kind == "video" %}<video src="{{ asset(m.src) }}" controls preload="metadata" aria-label="{{ m.alt }}"{% if m.width %} width="{{ m.width }}" height="{{ m.height }}"{% endif %}></video>
+  {% else %}<img src="{{ asset(m.src) }}" alt="{{ m.alt }}" loading="lazy" decoding="async"{% if m.width %} width="{{ m.width }}" height="{{ m.height }}"{% endif %}>{% endif %}
+  {% if m.caption %}<figcaption class="media__caption">{{ val(m.caption) }}</figcaption>{% endif %}
+</figure>
+{%- endif %}
+{%- endmacro %}
+
+{% macro highlight(h) -%}
+<div class="metric{% if not h.verified %} metric--unverified{% endif %}">
+  <dt class="metric__label">{{ h.label }}</dt>
+  <dd class="metric__value">{{ val(h.value) }}</dd>
+  {% if not h.verified %}<dd class="metric__flag">{{ unverified() }}</dd>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro stack(items, label="Stack") -%}
+{% if items %}
+<ul class="chips" aria-label="{{ label }}">
+  {% for item in items %}<li class="chip">{{ val(item) }}</li>{% endfor %}
+</ul>
+{% endif %}
+{%- endmacro %}
+
+{#- Section header: index, overline, kinetic title, trailing meta. -#}
+{% macro section_head(index, overline, title, id, meta=None) -%}
+<header class="section-head">
+  <p class="section-head__rule"><span class="section-head__index">{{ index }}</span><span class="section-head__overline">{{ overline }}</span><span class="section-head__line" aria-hidden="true"></span>{% if meta %}<span class="section-head__meta">{{ meta }}</span>{% endif %}</p>
+  <h2 class="section-title" id="{{ id }}" data-fx="kinetic">{{ title }}</h2>
+</header>
+{%- endmacro %}
+
+{% macro two(n) -%}{{ "%02d" | format(n) }}{%- endmacro %}
+
+{% macro timecode(s) -%}{{ "%02d:%02d" | format(s // 60, s % 60) }}{%- endmacro %}
+
+{% macro category(c) -%}
+{{ {"ai": "AI", "cv": "Computer vision", "embedded": "Embedded", "web": "Web"}[c] }}
+{%- endmacro %}
+
+{% macro project_card(p, i, total) -%}
+<article class="card" data-fx="tilt" data-fx-item data-category="{{ p.category }}">
+  <header class="card__head">
+    <span class="card__index"><span class="sr-only">Project </span>{{ two(i) }}<span class="card__total" aria-hidden="true">/{{ two(total) }}</span></span>
+    <span class="card__category">{{ category(p.category) }}</span>
+    {% if p.case_study %}<span class="badge badge--accent">Case study</span>{% endif %}
+  </header>
+  <h3 class="card__title"><a class="card__link" href="/work/{{ p.slug }}">{{ p.title }}</a></h3>
+  <p class="card__kicker">{{ p.kicker }}</p>
+  {{ para(p.summary, "card__summary") }}
+  {% if p.highlights %}
+  <dl class="card__metrics">{% for h in p.highlights[:1] %}{{ highlight(h) }}{% endfor %}</dl>
+  {% endif %}
+  <footer class="card__foot">
+    {{ stack(p.stack, "Stack for " ~ p.title) }}
+    <span class="card__go" aria-hidden="true">{{ icon("arrow-right") }}</span>
+  </footer>
+</article>
+{%- endmacro %}
+
+{#- Server clock as HH:MM:SS, from an ISO string or a datetime. -#}
+{% macro clock(v) -%}
+{% if v is string %}{{ v[11:19] }}{% else %}{{ v.strftime("%H:%M:%S") }}{% endif %}
+{%- endmacro %}
+
+{% macro uptime(s) -%}
+{% set s = s | int %}{% if s >= 86400 %}{{ s // 86400 }}d {% endif %}{{ "%02d:%02d:%02d" | format((s % 86400) // 3600, (s % 3600) // 60, s % 60) }}
+{%- endmacro %}
+
+{% macro date_range(start, end) -%}
+<span class="dates">{{ val(start) }}<span class="dates__sep" aria-hidden="true"> – </span><span class="sr-only"> to </span>{% if end is none %}<span class="dates__now">Present</span>{% else %}{{ val(end) }}{% endif %}</span>
+{%- endmacro %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Signal lost · {{ site.name }}{% endblock %}
+{% block description %}This page does not exist. Return to {{ site.name }}’s portfolio.{% endblock %}
+{% block canonical %}{% endblock %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block main %}
+<section class="lost" aria-labelledby="lost-title">
+  <div class="lost__scope" aria-hidden="true">
+    <span class="poster__ring"></span><span class="poster__ticks"></span>
+    <span class="lost__blip"></span>
+  </div>
+  <div class="wrap lost__inner">
+    <p class="lost__code"><span class="lost__method">GET</span> <span class="lost__path">{{ request.url.path if request is defined else "" }}</span> <span class="lost__status">404</span></p>
+    <h1 class="lost__title" id="lost-title" tabindex="-1" data-fx="split" data-fx-split="chars">Signal lost</h1>
+    <p class="lead lost__copy">Nothing answers at this address. The link may be mistyped, or the page may have moved.</p>
+    <div class="lost__actions">
+      <a class="btn btn--primary btn--large" href="/" data-fx="magnetic">{{ ui.icon("arrow-left", "icon--lead") }}Return to home</a>
+      <a class="btn btn--ghost btn--large" href="/#work">Browse all work</a>
+    </div>
+    <div class="lost__projects">
+      <p class="panel__label">Known frequencies</p>
+      <ul>
+        {% for p in content.projects_ordered %}<li><a class="link" href="/work/{{ p.slug }}" data-fx="scramble">{{ p.title }}</a></li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+</section>
+{% endblock %}

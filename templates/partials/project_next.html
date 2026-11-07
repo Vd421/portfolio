@@ -1,0 +1,11 @@
+{#- Previous / next project, in gallery order. Expects `project`. -#}
+{%- set ordered = content.projects_ordered -%}
+{%- set ns = namespace(i=0) -%}
+{%- for p in ordered %}{% if p.slug == project.slug %}{% set ns.i = loop.index0 %}{% endif %}{% endfor -%}
+{%- set prev = ordered[ns.i - 1] if ns.i > 0 else none -%}
+{%- set next = ordered[ns.i + 1] if ns.i + 1 < ordered | length else none -%}
+<nav class="pager" aria-label="More projects">
+  {% if prev %}<a class="pager__link pager__link--prev" href="/work/{{ prev.slug }}"><span class="pager__dir">{{ ui.icon("arrow-left") }}Previous project</span><span class="pager__title">{{ prev.title }}</span></a>{% else %}<span></span>{% endif %}
+  <a class="pager__index" href="/#work" data-fx="scramble">All work</a>
+  {% if next %}<a class="pager__link pager__link--next" href="/work/{{ next.slug }}"><span class="pager__dir">Next project{{ ui.icon("arrow-right") }}</span><span class="pager__title">{{ next.title }}</span></a>{% else %}<span></span>{% endif %}
+</nav>

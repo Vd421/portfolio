@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% block title %}{{ site.name }} · {{ site.roles[0] }}{% endblock %}
+{% block description %}{{ site.name }} ({{ site.handle }}): {{ site.roles | join(", ") }}. {{ site.tagline }}{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ base_url }}/">{% endblock %}
+
+{% block head %}
+{%- set current = content.experience | selectattr("end", "none") | first -%}
+{%- set person = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": site.name,
+  "alternateName": site.handle,
+  "description": site.tagline,
+  "email": "mailto:" ~ site.email,
+  "url": base_url ~ "/",
+  "address": {"@type": "PostalAddress", "addressLocality": site.location},
+  "sameAs": [],
+  "alumniOf": [],
+  "knowsAbout": []
+} -%}
+{%- if current %}{% set _ = person.update({"worksFor": {"@type": "Organization", "name": current.company}}) %}{% endif -%}
+{%- for l in site.links if l.kind == "social" and not l.is_placeholder %}{% set _ = person.sameAs.append(l.href) %}{% endfor -%}
+{%- for e in site.education %}{% set _ = person.alumniOf.append({"@type": "CollegeOrUniversity", "name": e.institution}) %}{% endfor -%}
+{%- for g in content.skills %}{% for i in g.items %}{% set _ = person.knowsAbout.append(i) %}{% endfor %}{% endfor -%}
+<script type="application/ld+json">{{ person | tojson }}</script>
+{% endblock %}
+
+{% block main %}
+{%- set featured = content.featured -%}
+{%- set first, _, last = site.name.partition(" ") -%}
+{%- set edu = site.education[0] if site.education else none -%}
+{%- set current = content.experience | selectattr("end", "none") | first -%}
+
+{# ───────────────────────── Hero ───────────────────────── #}
+<section class="hero" aria-labelledby="hero-title">
+  <div id="hero-stage" data-webgl="field" aria-hidden="true">
+    <div class="poster">
+      <div class="poster__bloom"></div>
+      <div class="poster__grid" data-fx="parallax" data-depth="-0.2"></div>
+      <div class="poster__scope" data-fx="parallax" data-depth="0.15">
+        <span class="poster__ring"></span>
+        <span class="poster__ticks"></span>
+        <span class="poster__sweep"></span>
+      </div>
+      <div class="poster__field" data-fx="parallax" data-depth="0.3">{% include "partials/ridgeline.svg" %}</div>
+      <div class="poster__horizon"></div>
+      <div class="poster__grain"></div>
+      <span class="poster__mark poster__mark--a">FIELD 01</span>
+      <span class="poster__mark poster__mark--b">{{ site.handle | upper }} / SIGNAL</span>
+    </div>
+  </div>
+
+  <div class="hero__inner">
+    <p class="hero__prompt"><span class="hero__prompt-user">{{ site.handle }}@portfolio</span><span class="hero__prompt-path">:~$</span> whoami<span class="hero__caret" aria-hidden="true"></span></p>
+
+    <h1 class="hero__title" id="hero-title" tabindex="-1" data-fx="split" data-fx-split="chars">
+      <span class="hero__line">{{ first }}</span> <span class="hero__line hero__line--indent">{{ last }}</span>
+    </h1>
+
+    <ul class="hero__roles" aria-label="Roles">
+      {% for r in site.roles %}<li data-fx="scramble"><span class="hero__role-index" aria-hidden="true">{{ ui.two(loop.index) }}</span>{{ r }}</li>{% endfor %}
+    </ul>
+
+    <p class="hero__tagline" data-fx="split" data-fx-split="lines">{{ site.tagline }}</p>
+
+    <div class="hero__actions">
+      {% if featured %}
+      <a class="btn btn--primary btn--large" href="/work/{{ featured.slug }}" data-fx="magnetic">See the {{ featured.title }} case study{{ ui.icon("arrow-right", "icon--trail") }}</a>
+      {% endif %}
+      <a class="btn btn--ghost btn--large" href="#work" data-fx="magnetic">Browse all work</a>
+      <a class="link link--quiet" href="#contact" data-fx="scramble">Get in touch</a>
+    </div>
+  </div>
+
+  <dl class="hero__readout" aria-label="At a glance">
+    <div><dt>Handle</dt><dd>{{ site.handle }}</dd></div>
+    <div><dt>Base</dt><dd>{{ site.location }}</dd></div>
+    {% if edu %}<div><dt>Education</dt><dd>{{ edu.degree }} {{ edu.field | replace("Electrical and Electronics Engineering", "EEE") }}, {{ edu.institution }}{% if edu.end %} ’{{ edu.end[-2:] }}{% endif %}</dd></div>{% endif %}
+    {% if current %}<div><dt>Now</dt><dd>{{ current.company }}{% if current.client %}<span class="hero__readout-sub"> · client {{ current.client }}</span>{% endif %}</dd></div>{% endif %}
+    <div><dt>Availability</dt><dd>{{ ui.val(site.availability) }}</dd></div>
+  </dl>
+
+  <a class="hero__scroll" href="#about" aria-label="Scroll to About">
+    <span class="hero__scroll-line" aria-hidden="true"></span>
+    <span class="hero__scroll-text" aria-hidden="true">Scroll</span>
+  </a>
+</section>
+
+{# ───────────────────────── About ───────────────────────── #}
+<section class="section about" aria-labelledby="about-title" id="about" data-fx="reveal">
+  <div class="wrap">
+    {{ ui.section_head("01", "Operator profile", "About", "about-title") }}
+    <div class="about__grid">
+      <div class="about__copy prose">
+        {% for p in site.about %}{{ ui.para(p, "lead" if loop.first else "") }}{% endfor %}
+      </div>
+      <aside class="about__side" aria-label="Education and location">
+        {% for e in site.education %}
+        <div class="panel panel--ticks about__edu" data-fx-item>
+          <p class="panel__label">Education</p>
+          <p class="about__degree">{{ e.degree }}</p>
+          {% if e.field %}<p class="about__field">{{ ui.val(e.field) }}</p>{% endif %}
+          <p class="about__school">{{ e.institution }}</p>
+          {% if e.start or e.end %}<p class="about__years">{{ ui.date_range(e.start, e.end) }}</p>{% endif %}
+        </div>
+        {% endfor %}
+        <div class="panel panel--ticks about__loc" data-fx-item>
+          <p class="panel__label">Location</p>
+          <p class="about__place">{{ ui.icon("pin") }}{{ site.location }}</p>
+          <p class="panel__label">Availability</p>
+          <p>{{ ui.val(site.availability) }}</p>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+{# ───────────────────────── Featured: Replay ───────────────────────── #}
+{% if featured %}
+{%- set cs = featured.case_study -%}
+<section class="section featured" aria-labelledby="featured-title" id="featured">
+  <div class="wrap">
+    {{ ui.section_head("02", "Featured case study", featured.title, "featured-title", featured.kicker) }}
+    <div class="featured__grid">
+      <div class="featured__copy">
+        <p class="lead">{{ featured.summary }}</p>
+        {% for p in featured.description[:1] %}{{ ui.para(p) }}{% endfor %}
+        <div class="featured__actions">
+          <a class="btn btn--primary" href="/work/{{ featured.slug }}" data-fx="magnetic">Open the case study{{ ui.icon("arrow-right", "icon--trail") }}</a>
+          {% for l in featured.links %}{{ ui.link(l) }}{% endfor %}
+        </div>
+      </div>
+
+      <div class="console" data-fx="tilt">
+        <div class="console__bar" aria-hidden="true">
+          <span class="console__lights"><i></i><i></i><i></i></span>
+          <span class="console__url">replay://session</span>
+          <span class="console__rec">REC</span>
+        </div>
+        <div class="console__screen" aria-hidden="true">
+          <div class="mock">
+            <span class="mock__nav"></span>
+            <span class="mock__hero"></span>
+            <span class="mock__row"><i></i><i></i><i></i></span>
+            <span class="mock__line"></span><span class="mock__line mock__line--short"></span>
+            <span class="mock__button"></span>
+          </div>
+          {% for ch in cs.chapters if ch.flag %}
+          <span class="console__pin console__pin--{{ ch.flag.severity }}" style="--at: {{ (ch.at / cs.duration) | round(4) }}">{{ ui.icon("error" if ch.flag.severity == "error" else "warning") }}</span>
+          {% endfor %}
+          <span class="console__cursor">{{ ui.icon("cursor") }}</span>
+        </div>
+        {% if cs %}
+        <div class="console__timeline">
+          <p class="console__time"><span>{{ ui.timecode(0) }}</span><span class="console__dur">{{ ui.timecode(cs.duration) }}</span></p>
+          <div class="console__track" aria-hidden="true">
+            <span class="console__progress"></span>
+            {% for ch in cs.chapters %}<span class="console__tick" style="--at: {{ (ch.at / cs.duration) | round(4) }}"></span>{% endfor %}
+            {% for ch in cs.chapters if ch.flag %}<span class="console__flag console__flag--{{ ch.flag.severity }}" style="--at: {{ (ch.at / cs.duration) | round(4) }}"></span>{% endfor %}
+          </div>
+          <ol class="console__chapters" aria-label="Case study chapters">
+            {% for ch in cs.chapters %}
+            <li>
+              <a href="/work/{{ featured.slug }}#chapter-{{ ch.id }}">
+                <span class="console__chapter-time">{{ ui.timecode(ch.at) }}</span>
+                <span class="console__chapter-title">{{ ch.title }}</span>
+                {% if ch.flag %}<span class="flag-chip flag-chip--{{ ch.flag.severity }}">{{ ui.icon("error" if ch.flag.severity == "error" else "warning") }}{{ ch.flag.label }}</span>{% endif %}
+              </a>
+            </li>
+            {% endfor %}
+          </ol>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# ───────────────────────── Work ───────────────────────── #}
+{%- set projects = content.projects_ordered -%}
+<section class="section work" aria-labelledby="work-title" id="work" data-fx="hscroll">
+  <div class="wrap">
+    {{ ui.section_head("03", "Project index", "Selected work", "work-title", projects | length ~ " projects") }}
+  </div>
+  <div class="work__viewport">
+    <div class="work__track" data-fx-track data-fx="reveal">
+      {% for p in projects %}{{ ui.project_card(p, loop.index, projects | length) }}{% endfor %}
+    </div>
+  </div>
+</section>
+
+{# ───────────────────────── Experience ───────────────────────── #}
+<section class="section experience" aria-labelledby="experience-title" id="experience">
+  <div class="wrap">
+    {{ ui.section_head("04", "Service log", "Experience", "experience-title", content.experience | length ~ " roles") }}
+    <ol class="timeline" data-fx="reveal">
+      {% for r in content.experience %}
+      <li class="timeline__item{% if r.end is none %} timeline__item--current{% endif %}" data-fx-item>
+        <div class="timeline__when">
+          {{ ui.date_range(r.start, r.end) }}
+          <span class="timeline__kind">{{ "Full-time" if r.kind == "full-time" else "Internship" }}</span>
+        </div>
+        <span class="timeline__node" aria-hidden="true"></span>
+        <article class="timeline__body">
+          <h3 class="timeline__role">{{ ui.val(r.title) }}</h3>
+          <p class="timeline__org">{{ r.company }}{% if r.client %}<span class="timeline__client"> · client {{ r.client }}</span>{% endif %}{% if r.location %}<span class="timeline__loc"> · {{ ui.val(r.location) }}</span>{% endif %}</p>
+          {{ ui.para(r.summary, "timeline__summary") }}
+          {% if r.highlights %}<dl class="metrics">{% for h in r.highlights %}{{ ui.highlight(h) }}{% endfor %}</dl>{% endif %}
+          {{ ui.stack(r.stack, "Stack at " ~ r.company) }}
+        </article>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>
+
+{# ───────────────────────── Skills ───────────────────────── #}
+<section class="section skills" aria-labelledby="skills-title" id="skills">
+  <div class="wrap">
+    {{ ui.section_head("05", "Toolchain", "Skills", "skills-title") }}
+    <div class="skills__grid" data-fx="reveal">
+      {% for g in content.skills %}
+      <section class="skill-group panel panel--ticks" aria-labelledby="skills-{{ loop.index }}" data-fx-item>
+        <h3 class="skill-group__name" id="skills-{{ loop.index }}"><span class="skill-group__index" aria-hidden="true">{{ ui.two(loop.index) }}</span>{{ g.name }}</h3>
+        <ul class="skill-group__items">
+          {% for i in g.items %}<li>{{ i }}</li>{% endfor %}
+        </ul>
+        <p class="skill-group__count" aria-hidden="true">{{ ui.two(g.items | length) }}</p>
+      </section>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{# ───────────────────────── Contact ───────────────────────── #}
+<section class="section contact" aria-labelledby="contact-title" id="contact">
+  <div class="wrap">
+    {{ ui.section_head("06", "Open a channel", "Contact", "contact-title") }}
+    <div class="contact__grid">
+      <div class="contact__main">
+        <p class="contact__lede">The fastest way to reach {{ first }} is email.</p>
+        <a class="contact__email" href="mailto:{{ site.email }}" data-fx="scramble">{{ site.email }}</a>
+      </div>
+      <ul class="contact__channels">
+        {% for l in site.links if l.kind != "mail" %}
+        <li class="channel"><span class="channel__kind">{{ l.label }}</span>{{ ui.link(l, "channel__link") }}</li>
+        {% endfor %}
+        <li class="channel"><span class="channel__kind">Resume</span>{{ ui.link(site.resume, "channel__link") }}</li>
+        <li class="channel"><span class="channel__kind">Based in</span><span class="channel__value">{{ site.location }}</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+{% endblock %}
