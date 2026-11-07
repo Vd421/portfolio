@@ -100,6 +100,20 @@
 
   [hidden] { display: none !important; }
 
+  /* Same layer as [hidden], so this more specific !important rule wins. */
+  /* Boot-flash guard (see base.html). Only an inline script sets data-boot, so
+     this can never apply without JavaScript; the failsafe uncovers the page after
+     3.5 s if Engineer C's boot.js never takes over. */
+  html[data-boot="pending"] #boot {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-boot);
+    background-color: var(--color-bg);
+    animation: vd-boot-failsafe 0s linear 3.5s forwards;
+  }
+  @keyframes vd-boot-failsafe { to { visibility: hidden; } }
+
   @media (prefers-reduced-motion: no-preference) {
     :root:not([data-motion="still"]) { scroll-behavior: smooth; }
   }
@@ -138,18 +152,6 @@
   :where(.hero__inner, .featured__copy, .project__head, .case__head, .lost__inner, .about__side, .timeline__body) { grid-template-columns: minmax(0, 1fr); }
   :where(.hero__inner, .featured__copy, .project__head, .case__head, .lost__inner) > * { max-inline-size: 100%; }
 
-  /* Boot-flash guard (see base.html). Only an inline script sets data-boot, so
-     this can never apply without JavaScript; the failsafe uncovers the page after
-     3.5 s if Engineer C's boot.js never takes over. */
-  html[data-boot="pending"] #boot {
-    display: block !important;
-    position: fixed;
-    inset: 0;
-    z-index: var(--z-boot);
-    background-color: var(--color-bg);
-    animation: vd-boot-failsafe 0s linear 3.5s forwards;
-  }
-  @keyframes vd-boot-failsafe { to { visibility: hidden; } }
 
   .wrap {
     inline-size: 100%;

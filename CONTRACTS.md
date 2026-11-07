@@ -172,6 +172,17 @@ htmx is a classic deferred script: `https://cdn.jsdelivr.net/npm/htmx.org@2.0.11
 
 Entry point: `<script type="module" src="{{ asset('js/main.js') }}">` (C). `main.js` imports `core/*` (B) eagerly and dynamically imports `fx/*` and `webgl/*` only when motion is allowed and the page uses them. Three.js loads only when the hero is near the viewport, motion is allowed, WebGL2 exists and `navigator.connection.saveData` is not true.
 
+## Additions agreed during the build
+
+- **Replay player:** `.player` also contains `<div data-replay-stage aria-hidden="true">` with a `[data-replay-cursor]`; each marker `<li>` carries `--span` (its chapter's share of the timeline). A flag's `data-at` is the midpoint of its chapter's span (`ui.flag_at` macro), so home and the case study agree.
+- **Pending flags:** flags ahead of the playhead are dimmed to `opacity: 0.8` (not lower: their text must still pass 4.5:1, measured at 5.9:1 and above).
+- **HUD:** `[data-hud="status"]` and `[data-hud="ask"]` hold lowercase values and style through `data-state`. The clock carries `data-tz="utc"`; uptime carries `data-value` (seconds).
+- **Boot guard:** an inline `<script nonce>` in `<head>` sets `html[data-boot="pending"]` on a first visit when motion is allowed. CSS covers the page with `--color-bg` until `boot.js` takes over, with a 3.5 s CSS failsafe that uncovers it if JS fails.
+- **Shared-element morph:** `data-vt="title|media"` marks card titles, project and case-study `h1`s and media figures. `transitions.js` sets `view-transition-name: vt-title-{slug}` / `vt-media-{slug}` on the clicked card and its target.
+- **Back/forward:** htmx history snapshots are off (they would replace `<body>`); `nav.js` re-fetches into `#main` and restores the saved scroll position.
+- **Ask errors:** a refusal after partial tokens sends `event: error` with `code: "upstream"`, and the client discards the partial answer. Invalid input returns 422 (413 if over 16 KB) with a single SSE `error`/`invalid` event.
+- **Core modules:** `main.js` loads `core/{motion,nav,palette}` by name (the `CORE` list). Add new core modules there.
+
 ## Performance budget
 
 - 60 fps on the hero at 4× CPU throttle in Chrome. One shared rAF loop (the GSAP ticker).

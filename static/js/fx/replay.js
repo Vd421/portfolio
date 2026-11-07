@@ -26,7 +26,7 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 css('replay', `
 ${LIVE} .fx-replay [data-flag] { transform-origin: 0 50%; }
-${LIVE} .fx-replay [data-flag][data-pending] { opacity: 0.28; filter: saturate(0); }
+${LIVE} .fx-replay [data-flag][data-pending] { opacity: 0.8; filter: saturate(0.35); }
 .fx-replay [data-replay-markers] li[data-state="current"] > a { font-weight: 600; }
 
 .fx-rp { --rp-line: color-mix(in oklab, var(--color-border-strong, #334) 80%, transparent);
