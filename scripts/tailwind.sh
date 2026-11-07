@@ -17,7 +17,14 @@ esac
 if [[ ! -x "$BIN" ]]; then
   mkdir -p "$ROOT/bin"
   echo "Downloading Tailwind $VERSION ($ASSET)…"
-  curl -fsSL -o "$BIN" "https://github.com/tailwindlabs/tailwindcss/releases/download/$VERSION/$ASSET"
+  URL="https://github.com/tailwindlabs/tailwindcss/releases/download/$VERSION/$ASSET"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL -o "$BIN.part" "$URL"
+  else
+    # Slim images ship Python but not curl.
+    python3 -c 'import sys, urllib.request; urllib.request.urlretrieve(sys.argv[1], sys.argv[2])' "$URL" "$BIN.part"
+  fi
+  mv "$BIN.part" "$BIN"
   chmod +x "$BIN"
 fi
 

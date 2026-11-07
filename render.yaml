@@ -1,0 +1,19 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: vd-portfolio
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free  # spins down when idle; "starter" keeps it warm (paid)
+    autoDeploy: true
+    healthCheckPath: /healthz
+    envVars:
+      - key: ENV
+        value: prod
+      - key: ASK_MODEL
+        value: claude-opus-5-5
+      - key: ASK_RATE
+        value: "8/600"
+      # Set in the Render dashboard; never committed. Without it, Ask vd stays offline.
+      - key: ANTHROPIC_API_KEY
+        sync: false
