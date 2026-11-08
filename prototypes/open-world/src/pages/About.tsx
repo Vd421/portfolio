@@ -88,8 +88,8 @@ export function About() {
           <Portrait />
           <h1 className="display charname">{person.first} <span className="last">{person.last}</span></h1>
           <dl className="attrs">
-            <dt className="label">Class</dt><dd>{person.roles[0]}</dd>
-            <dt className="label">Also plays</dt><dd>{person.roles.slice(1).join(', ')}</dd>
+            <dt className="label">Target role</dt><dd>{person.roles[0]}</dd>
+            <dt className="label">Also open to</dt><dd>{person.roles.slice(1).join(', ')}</dd>
             <dt className="label">Origin</dt><dd>{person.education} · {person.gradYear}</dd>
             <dt className="label">Base</dt><dd>{person.base}</dd>
             <dt className="label">Current</dt><dd>{person.now}</dd>
@@ -122,7 +122,7 @@ export function About() {
               {jobs.map((j) => (
                 <m.article key={j.where} className="job" variants={item}>
                   <h3>{j.title ?? 'Role'}</h3>
-                  <span className="dates">{j.when ?? 'TODO · dates'}{j.now ? ' · Now' : ''}</span>
+                  <span className="dates">{j.when ?? 'TODO · dates'}{j.now ? ' – Now' : ''}</span>
                   <span className="co">{j.where}</span>
                   {!j.title && <Todo>job title</Todo>}
                   {j.body ? <p style={{ gridColumn: '1 / -1', color: 'var(--paper-2)' }}>{j.body}</p> : <span style={{ gridColumn: '1 / -1' }}><Todo>what you built here</Todo></span>}

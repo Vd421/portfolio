@@ -14,8 +14,8 @@ export const person = {
   github: 'https://github.com/Vd421',
   linkedin: 'https://www.linkedin.com/in/vaibhav-dhir',
   about: [
-    'Electrical and Electronics Engineering graduate from VIT Chennai, now at HCLTech building for MetLife.',
-    'My work sits where AI meets real users: session replay that flags bugs on its own, career tools grounded in real data, and computer vision that runs on actual hardware.',
+    'Electrical and Electronics Engineering graduate from VIT Chennai (2021–2025), now an IT Offshore Associate at HCLTech on the MetLife account.',
+    'My work sits where AI meets real users: session replay that flags where people got stuck, an AI agent that runs a job search end to end, LLM features in a production financial platform, and computer vision that tracks a whole match in real time.',
   ],
 }
 
@@ -35,28 +35,37 @@ export const missions: Mission[] = [
     id: 'replay',
     title: 'Replay',
     kicker: 'Session replay with AI bug flagging',
-    summary: 'Records real user sessions, plays them back, and has an AI model flag the moments where something broke.',
+    summary: 'Records user interactions on a website and replays them in a React dashboard; AI analysis flags the sessions where users got stuck, so friction surfaces without manual review.',
     objective: 'Jump straight to the second a session went wrong, without reading logs.',
-    stack: [],
+    stack: ['TypeScript', 'React', 'Node.js', 'PostgreSQL'],
     main: true,
     link: null,
   },
   {
     id: 'careerpilot',
     title: 'CareerPilot AI',
-    kicker: 'AI career copilot',
-    summary: '',
-    objective: 'Turn a career question into a plan grounded in real data.',
-    stack: [],
+    kicker: 'AI job-search agent',
+    summary: 'Takes a job description, finds matching roles, applies, and tracks every application end to end, with automated SMS updates, recruiter follow-ups and referral requests.',
+    objective: 'Go from a job description to tracked applications without the busywork.',
+    stack: ['React', 'TypeScript', 'Node.js', 'Prisma', 'PostgreSQL', 'Claude API'],
+    link: null,
+  },
+  {
+    id: 'luna',
+    title: 'Luna',
+    kicker: 'Multimodal AI chatbot',
+    summary: 'A full-stack conversational app that generates text and images with GPT-4 and DALL·E, with multi-turn memory and a Flask REST backend for conversation state.',
+    objective: 'Keep one conversation going across text and images.',
+    stack: ['Python', 'Flask', 'OpenAI API', 'DALL·E'],
     link: null,
   },
   {
     id: 'tracker',
     title: 'Soccer Player Tracker',
     kicker: 'Real-time multi-object tracking',
-    summary: 'Tracks every player through a match in real time, keeping identities stable across frames.',
+    summary: 'Tracks players, referees and the ball through a match in real time, with a re-identification pipeline that holds identities through occlusions and fast motion.',
     objective: 'Keep the same ID on every player through crossings and occlusions.',
-    stack: ['Python', 'YOLOv8', 'Re-ID', 'OpenCV'],
+    stack: ['Python', 'YOLOv8', 'DeepSORT', 'OpenCV'],
     link: null,
   },
   {
@@ -92,23 +101,26 @@ export type Stop = { when: string | null; title: string | null; where: string; b
 
 export const story: Stop[] = [
   { when: '2021 – 2025', title: 'B.Tech, EEE', where: 'VIT Chennai', body: 'Electrical and Electronics Engineering, with the projects that pulled me toward AI and computer vision.' },
-  { when: 'Oct – Nov 2023', title: 'Software Developer Intern', where: 'Vertex Info Soft', body: 'Built and optimized application modules with an emphasis on testing and debugging.' },
-  { when: null, title: 'GenAI Intern', where: 'Hapticware', body: null },
-  { when: null, title: null, where: 'HCLTech · MetLife', body: null, now: true },
+  { when: 'Oct – Nov 2023', title: 'Software Developer Intern', where: 'Vertex Info Soft · Chandigarh', body: 'Built Flask and Firebase backend services and REST APIs; query optimization and caching cut response time by 30%, and stricter debugging and automated tests cut production bugs by 40%.' },
+  { when: 'May – Jun 2025', title: 'Generative AI Engineer Intern', where: 'Hapticware · Remote', body: 'Integrated OpenAI LLM APIs for real-time question answering and document summarization in a production financial platform. Prompt workflows cut API response latency by 40%; LangChain and vector-database pipelines power context-aware answers.' },
+  { when: 'Aug 2026', title: 'IT Offshore Associate', where: 'HCLTech · MetLife · Noida', body: 'Support MetLife’s global IT service desk under ITIL: incident triage and escalation in ServiceNow within SLAs, identity and access in Microsoft Entra ID, and Microsoft 365, Intune and SCCM support.', now: true },
 ]
 
 export const abilities = [
-  { name: 'Languages', items: ['Python', 'C++', 'Java', 'C', 'Embedded C', 'HTML'] },
-  { name: 'AI and vision', items: ['PyTorch', 'TensorFlow', 'OpenCV', 'YOLOv8', 'YOLOv3', 'LLM APIs'] },
-  { name: 'Web and backend', items: ['FastAPI', 'Flask', 'React'] },
-  { name: 'Hardware', items: ['Arduino', 'Ultrasonic sensors', 'Sensor fusion'] },
+  { name: 'Languages', items: ['Python', 'TypeScript', 'JavaScript', 'C++', 'Java'] },
+  { name: 'AI and ML', items: ['Claude API', 'OpenAI API', 'LangChain', 'RAG', 'PyTorch', 'OpenCV', 'YOLOv8'] },
+  { name: 'Web and backend', items: ['React', 'Node.js', 'FastAPI', 'Flask', 'Prisma'] },
+  { name: 'Data and cloud', items: ['PostgreSQL', 'Redis', 'Docker', 'Kubernetes', 'Entra ID'] },
+  { name: 'Hardware', items: ['Arduino', 'Embedded C'] },
 ]
 
 /** Loading-screen tips: real facts about Vaibhav only. Strings starting with TODO are skipped. */
 export const tips: string[] = [
   'Vaibhav studied Electrical and Electronics Engineering at VIT Chennai, class of 2025.',
   'He works at HCLTech on the MetLife account.',
-  'Replay records real user sessions and has AI flag the moment something broke.',
+  'At Hapticware, his prompt workflows cut LLM API response latency by 40%.',
+  'CareerPilot AI takes a job description and runs the whole application process, powered by the Claude API.',
+  'Replay records real user sessions and has AI flag where people got stuck.',
   'His soccer tracker keeps every player’s ID stable through crossings and occlusions.',
   'He builds hardware too: an obstacle-sensing walking aid and a fire-fighting robot.',
   'He is based in Delhi, India.',
@@ -118,7 +130,7 @@ export const tips: string[] = [
 export type HudStat = { label: string; value: number | null; prefix?: string }
 export const hudStats: HudStat[] = [
   { label: 'Years coding', value: null },
-  { label: 'Projects shipped', value: null },
+  { label: 'Projects built', value: missions.length },
   { label: 'GitHub commits', value: null },
 ]
 

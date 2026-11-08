@@ -269,7 +269,7 @@ export function Landing({ go, introDone }: { go: (r: Route) => void; introDone: 
               <li key={i} className={`tl-entry ${i % 2 ? 'right' : 'left'}`}>
                 <span className="tl-dot" aria-hidden="true" />
                 <div className="tl-card">
-                  <span className="label when">{s.when ?? 'TODO · dates'}{s.now ? ' · Now' : ''}</span>
+                  <span className="label when">{s.when ?? 'TODO · dates'}{s.now ? ' – Now' : ''}</span>
                   <h3>{s.title ?? <Todo>job title</Todo>}</h3>
                   <span className="where">{s.where}</span>
                   {s.body ? <p>{s.body}</p> : <Todo>what you built here</Todo>}

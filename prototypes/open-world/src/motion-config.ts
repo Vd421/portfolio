@@ -46,7 +46,7 @@ export const type = {
   lhBody: '1.6',
   trackDisplay: '-0.01em',
   trackLabel: '0.08em',
-  measure: '65ch',
+  measure: '55ch',
 } as const
 
 /** 8 px spacing scale. */
