@@ -87,6 +87,9 @@ export const time = {
   blipPulse: 0.6,       // minimap blip on section enter
   carTurn: 0.25,        // hypercar turntable, radians per second
   glintEvery: 5,        // headlight glint period, seconds
+  orbitTurn: 80,        // Skills: seconds per revolution, outer ring
+  orbitTurnInner: 120,  // Skills: inner (category) ring, opposite direction
+  orbitSnap: 0.7,       // Skills: swing the selected skill to the top
 } as const
 
 export const distance = {

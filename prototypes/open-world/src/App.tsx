@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, LazyMotion, MotionConfig, type Variants } from 'motion/react'
 import * as m from 'motion/react-m'
-import { nav, prefersReduced, refreshScroll, scrollToTop, startWorld, storage, upgradeTo3D, world } from './world'
+import { nav, prefersReduced, refreshScroll, scrollToTop, startWorld, storage, world } from './world'
+import { Backdrop } from './components/Backdrop'
 import { LoadingScreen } from './components/LoadingScreen'
 import { BottomHud, TopBar, type Route } from './components/Hud'
 import { Landing } from './pages/Landing'
@@ -20,8 +21,6 @@ const slab = (i: number): Variants => ({
 const loadFeatures = () => import('./motion-features').then((r) => r.default)
 
 export default function App() {
-  const canvas = useRef<HTMLCanvasElement>(null)
-  const canvas3d = useRef<HTMLCanvasElement>(null)
   const [phase, setPhase] = useState<'idle' | 'cover' | 'hold' | 'reveal'>('idle')
   const [wipeLabel, setWipeLabel] = useState('The city')
   const pending = useRef<() => void>(() => {})
@@ -31,11 +30,8 @@ export default function App() {
   const [introDone, setIntroDone] = useState(!showIntro)
   const busy = useRef(false)
 
-  useEffect(() => { if (canvas.current && canvas3d.current) startWorld(canvas.current, canvas3d.current) }, [])
+  useEffect(() => { startWorld() }, [])
   useEffect(() => { document.title = TITLES[route] }, [route])
-  // Don't draw the city behind the loading screen; one frame is kept ready for the fade.
-  useEffect(() => { world.covered = showIntro }, [showIntro])
-  useEffect(() => { if (introDone) upgradeTo3D() }, [introDone])
 
   const endIntro = useCallback(() => {
     try { storage('session')?.setItem('ow:loaded', '1') } catch { /* private mode */ }
@@ -79,11 +75,7 @@ export default function App() {
     <LazyMotion features={loadFeatures} strict>
       <MotionConfig reducedMotion="user">
         <a className="skip-link" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus() }}>Skip to content</a>
-        <div className="city-poster" aria-hidden="true" />
-        <canvas ref={canvas} className="city" aria-hidden="true" />
-        <canvas ref={canvas3d} className="city3d" aria-hidden="true" />
-        <div className="city-shade" aria-hidden="true" />
-        <div className="grain" aria-hidden="true" />
+        <Backdrop />
 
         <TopBar route={route} go={go} />
 

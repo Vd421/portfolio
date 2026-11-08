@@ -3,9 +3,16 @@ import { AnimatePresence } from 'motion/react'
 import * as m from 'motion/react-m'
 import { tips as allTips } from '../data'
 import { distance, ease, time } from '../motion-config'
+import { BackdropArt } from './Backdrop'
 
-const ART_WEBP = new URL('../assets/loading.webp', import.meta.url).toString()
-const ART_JPG = new URL('../assets/loading.jpg', import.meta.url).toString()
+// Intro reel (Remotion, reel/): a wide cut and a phone cut, ~200 KB each, chosen by aspect ratio.
+const REEL = {
+  wide: { src: new URL('../assets/intro.mp4', import.meta.url).href, poster: new URL('../assets/intro-poster.jpg', import.meta.url).href },
+  tall: { src: new URL('../assets/intro-tall.mp4', import.meta.url).href, poster: new URL('../assets/intro-tall-poster.jpg', import.meta.url).href },
+}
+const REEL_CAP = 7 // seconds: the reel is 6 s; never hold the page longer than this
+/** Play the reel unless the visitor asked to save data. */
+const wantsReel = () => !(navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData
 
 /**
  * First-visit loading screen: poster art with a slow Ken Burns move, rotating real-fact tips,
@@ -20,13 +27,16 @@ export function LoadingScreen({ onDone }: { onDone: () => void }) {
   const finish = useRef(() => {})
   finish.current = () => { if (!done.current) { done.current = true; onDone() } }
 
+  const [reel] = useState(() => (wantsReel() ? (innerHeight > innerWidth ? REEL.tall : REEL.wide) : null))
+  const [reelOn, setReelOn] = useState(!!reel) // false if the video fails: fall back to the poster timing
+
   useEffect(() => {
     const start = performance.now()
     let cancelled = false
-    const cap = window.setTimeout(() => finish.current(), time.loadingCap * 1000)
-    // Leave once fonts are ready and the minimum has passed, whichever is later.
+    const cap = window.setTimeout(() => finish.current(), (reelOn ? REEL_CAP : time.loadingCap) * 1000)
+    // Poster mode: leave once fonts are ready and the minimum has passed. Reel mode: when it ends.
     document.fonts.ready.then(() => {
-      if (cancelled) return
+      if (cancelled || reelOn) return
       const wait = Math.max(0, time.loadingMin * 1000 - (performance.now() - start))
       window.setTimeout(() => finish.current(), wait)
     })
@@ -36,7 +46,7 @@ export function LoadingScreen({ onDone }: { onDone: () => void }) {
     }
     addEventListener('keydown', onKey)
     return () => { cancelled = true; clearTimeout(cap); clearInterval(rotate); removeEventListener('keydown', onKey) }
-  }, [tips.length])
+  }, [tips.length, reelOn])
 
   return (
     <m.div
@@ -45,12 +55,15 @@ export function LoadingScreen({ onDone }: { onDone: () => void }) {
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: time.loadingFade, ease: ease.out } }}
     >
-      <picture className="loading-art" aria-hidden="true">
-        <source srcSet={ART_WEBP} type="image/webp" />
-        <img src={ART_JPG} alt="" width={1600} height={900} decoding="async" fetchPriority="high"
-          style={{ animationDuration: `${time.loadingCap}s`, ['--kb-scale' as string]: String(distance.kenBurnsScale) }} />
-      </picture>
-      <div className="loading-shade" aria-hidden="true" />
+      <div className="loading-art" aria-hidden="true"
+        style={{ animationDuration: `${time.loadingCap}s`, ['--kb-scale' as string]: String(distance.kenBurnsScale) }}>
+        <BackdropArt />
+      </div>
+      {reel && reelOn && (
+        <video className="loading-reel" src={reel.src} poster={reel.poster} autoPlay muted playsInline preload="auto"
+          aria-hidden="true" onEnded={() => finish.current()} onError={() => setReelOn(false)} />
+      )}
+      {!reelOn && <div className="loading-shade" aria-hidden="true" />}
 
       <button type="button" className="hud-btn loading-skip" onClick={(e) => { e.stopPropagation(); finish.current() }}>
         Skip

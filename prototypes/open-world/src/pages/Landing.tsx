@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { AnimatePresence } from 'motion/react'
 import * as m from 'motion/react-m'
 import { loadFx, lenisStop, prefersReduced, scrollToEl, scrollToY, world, focusHeadingIfNavigated } from '../world'
-import { abilities, aboutStats, missions, person, sections, story, type Mission, type SectionId } from '../data'
+import { aboutStats, missions, person, sections, story, type Mission, type SectionId } from '../data'
 import type { Route } from '../components/Hud'
 import { LottieIcon } from '../components/LottieIcon'
 import { pingAnim } from '../lottie'
@@ -10,6 +10,7 @@ import { HudStats } from '../components/HudStats'
 import { HeroCar } from '../components/HeroCar'
 import { Minimap } from '../components/Minimap'
 import { ContactPhone } from '../components/ContactPhone'
+import { SkillsOrbit } from '../components/SkillsOrbit'
 import { distance, gsapEase, revealStart, time } from '../motion-config'
 
 const Todo = ({ children }: { children: string }) => <span className="chip todo">TODO · {children}</span>
@@ -82,33 +83,12 @@ function SecHead({ id, eyebrow, title }: { id: string; eyebrow: string; title: s
   )
 }
 
-/** Skills orbit: categories on the inner ring, skills on the outer ring, each group on its own arc. */
-function skillPositions() {
-  const total = abilities.reduce((n, g) => n + g.items.length, 0)
-  let k = 0
-  return abilities.map((g, gi) => {
-    const start = k
-    const items = g.items.map((name) => {
-      const a = ((k++ + 0.5) / total) * Math.PI * 2 - Math.PI / 2
-      return { name, x: 50 + Math.cos(a) * 44, y: 50 + Math.sin(a) * 44 }
-    })
-    const mid = ((start + g.items.length / 2) / total) * Math.PI * 2 - Math.PI / 2
-    return { ...g, gi, cat: { x: 50 + Math.cos(mid) * 22, y: 50 + Math.sin(mid) * 22 }, items }
-  })
-}
-const monogram = (s: string) => {
-  const clean = s.replace(/[^A-Za-z0-9+#]/g, ' ').trim()
-  const words = clean.split(/\s+/)
-  return words.length > 1 ? (words[0][0] + words[1][0]).toUpperCase() : clean.slice(0, 2).replace(/^./, (c) => c.toUpperCase())
-}
-
 export function Landing({ go, introDone }: { go: (r: Route) => void; introDone: boolean }) {
   const root = useRef<HTMLElement>(null)
   const [open, setOpen] = useState<Mission | null>(null)
   const [active, setActive] = useState<SectionId>('hero')
   // The HUD waits for the hero entrance; under reduced motion it is simply there.
   const [hudIn, setHudIn] = useState(prefersReduced)
-  const orbit = skillPositions()
 
   useEffect(() => { focusHeadingIfNavigated(root.current) }, [])
 
@@ -179,9 +159,7 @@ export function Landing({ go, introDone }: { go: (r: Route) => void; introDone: 
           x: (i: number) => (wide ? (i % 2 === 0 ? -distance.timelineSlide : distance.timelineSlide) : distance.timelineSlide),
         }, 0.35))
 
-      beat('#skills', (tl) => tl.from('.skill, .orbit-cat, .orbit-core', {
-        autoAlpha: 0, scale: 0.8, duration: time.skillPop, stagger: time.skillStagger, ease: gsapEase.out,
-      }, '-=0.1'))
+      beat('#skills') // the orbit runs its own pop-in (SkillsOrbit), so it never fights the spin
 
       beat('#contact', (tl) => tl.from('.contact-phone', {
         autoAlpha: 0, y: distance.phoneRise, x: wide ? 40 : 0, duration: time.phoneSlide, ease: gsapEase.out,
@@ -304,24 +282,7 @@ export function Landing({ go, introDone }: { go: (r: Route) => void; introDone: 
 
       <section id="skills" className="section wrap" aria-labelledby="skills-title">
         <SecHead id="skills-title" eyebrow="04 · Loadout" title="Skills" />
-        <div className="orbit">
-          <span className="orbit-core display" aria-hidden="true">vd</span>
-          <ul className="orbit-groups">
-            {orbit.map((g) => (
-              <li key={g.name} className="orbit-group">
-                <h3 className="orbit-cat" style={{ left: `${g.cat.x}%`, top: `${g.cat.y}%` }}>{g.name}</h3>
-                <ul>
-                  {g.items.map((it) => (
-                    <li key={it.name} className={`skill g${g.gi}`} style={{ left: `${it.x}%`, top: `${it.y}%` }}>
-                      <span className="skill-icon" aria-hidden="true">{monogram(it.name)}</span>
-                      <span className="skill-name">{it.name}</span>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <SkillsOrbit />
       </section>
 
       <section id="contact" className="section wrap contact-sec" aria-labelledby="contact-title">
