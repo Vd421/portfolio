@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { gsap, ScrollTrigger, prefersReduced, scrollToTop, startWorld, storage, world } from './world'
+import { AnimatePresence, LazyMotion, MotionConfig, type Variants } from 'motion/react'
+import * as m from 'motion/react-m'
+import { nav, prefersReduced, refreshScroll, scrollToTop, startWorld, storage, upgradeTo3D, world } from './world'
 import { Intro } from './components/Intro'
 import { BottomHud, Objective, TopBar, type Route } from './components/Hud'
 import { Landing } from './pages/Landing'
@@ -7,10 +9,22 @@ import { About } from './pages/About'
 
 const routeFromHash = (): Route => (location.hash.replace('#', '') === 'about' ? 'about' : 'home')
 const TITLES: Record<Route, string> = { home: 'vd: Open World', about: 'Profile · vd: Open World' }
+const EASE = [0.2, 0, 0, 1] as const
+const slab = (i: number): Variants => ({
+  idle: { x: '-130%', skewX: -14, transition: { duration: 0 } },
+  cover: { x: '0%', skewX: -14, transition: { duration: 0.45, delay: i * 0.08, ease: [0.7, 0, 0.84, 0] } },
+  hold: { x: '0%', skewX: -14 },
+  reveal: { x: '130%', skewX: -14, transition: { duration: 0.5, delay: (1 - i) * 0.06, ease: EASE } },
+})
+// Motion's animation features arrive after first paint; `m` components render statically until then.
+const loadFeatures = () => import('./motion-features').then((r) => r.default)
 
 export default function App() {
   const canvas = useRef<HTMLCanvasElement>(null)
-  const wipe = useRef<HTMLDivElement>(null)
+  const canvas3d = useRef<HTMLCanvasElement>(null)
+  const [phase, setPhase] = useState<'idle' | 'cover' | 'hold' | 'reveal'>('idle')
+  const [wipeLabel, setWipeLabel] = useState('The city')
+  const pending = useRef<() => void>(() => {})
   const [route, setRoute] = useState<Route>(routeFromHash)
   const [objective, setObjective] = useState('Scroll to drive into the city.')
   const [showIntro, setShowIntro] = useState(() => {
@@ -20,8 +34,9 @@ export default function App() {
   const [introDone, setIntroDone] = useState(!showIntro)
   const busy = useRef(false)
 
-  useEffect(() => { if (canvas.current) startWorld(canvas.current) }, [])
+  useEffect(() => { if (canvas.current && canvas3d.current) startWorld(canvas.current, canvas3d.current) }, [])
   useEffect(() => { document.title = TITLES[route] }, [route])
+  useEffect(() => { if (introDone) upgradeTo3D() }, [introDone])
 
   const endIntro = useCallback(() => {
     try { storage('session')?.setItem('ow:intro', 'seen') } catch { /* private mode */ }
@@ -29,69 +44,76 @@ export default function App() {
     setIntroDone(true)
   }, [])
 
-  /** Switch pages behind a slash wipe, then put focus on the new page's heading. */
-  const go = useCallback((next: Route) => {
+  /** Switch pages behind a slash wipe (transform only), then focus the new page's heading. */
+  const go = useCallback(async (next: Route) => {
     if (busy.current) return
-    const finish = () => {
+    if (next === route) { scrollToTop(); return }
+    const swap = () => {
       setRoute(next)
       if (location.hash !== `#${next}`) history.pushState(null, '', `#${next}`)
       world.progress = 0
-      requestAnimationFrame(() => {
-        scrollToTop()
-        ScrollTrigger.refresh()
-        document.querySelector<HTMLElement>('#main h1')?.setAttribute('tabindex', '-1')
-        document.querySelector<HTMLElement>('#main h1')?.focus({ preventScroll: true })
-      })
+      nav.focusOnMount = true // the incoming page focuses its h1 when it mounts
+      requestAnimationFrame(() => { scrollToTop(); refreshScroll() })
     }
-    if (next === route) { scrollToTop(); return }
-    const w = wipe.current
-    if (prefersReduced() || !w) { finish(); return }
+    if (prefersReduced()) { swap(); return }
     busy.current = true
-    const label = w.querySelector('.msg .display')
-    if (label) label.textContent = next === 'about' ? 'Profile' : 'The city'
-    gsap.timeline({ onComplete: () => { busy.current = false; gsap.set(w, { visibility: 'hidden' }) } })
-      .set(w, { visibility: 'visible' })
-      .fromTo(w.querySelector('.slab.a'), { xPercent: -130, skewX: -14 }, { xPercent: 0, skewX: -14, duration: 0.45, ease: 'expo.in' })
-      .fromTo(w.querySelector('.slab.b'), { xPercent: -130, skewX: -14 }, { xPercent: 0, skewX: -14, duration: 0.45, ease: 'expo.in' }, 0.08)
-      .to(w.querySelector('.msg'), { opacity: 1, duration: 0.15 })
-      .call(finish)
-      .to({}, { duration: 0.35 })
-      .to(w.querySelector('.msg'), { opacity: 0, duration: 0.15 })
-      .to(w.querySelector('.slab.b'), { xPercent: 130, duration: 0.5, ease: 'expo.out' })
-      .to(w.querySelector('.slab.a'), { xPercent: 130, duration: 0.5, ease: 'expo.out' }, '<0.06')
+    pending.current = swap
+    setWipeLabel(next === 'about' ? 'Profile' : 'The city')
+    setPhase('cover')
   }, [route])
+
+  // Wipe sequence: cover → swap pages → hold the title → reveal → idle.
+  const onSlabDone = (def: unknown) => {
+    if (def === 'cover') { pending.current(); setPhase('hold'); setTimeout(() => setPhase('reveal'), 300) }
+    else if (def === 'reveal') { setPhase('idle'); busy.current = false }
+  }
 
   // Back and forward buttons
   useEffect(() => {
     const onHash = () => { const r = routeFromHash(); if (r !== route) go(r) }
-    addEventListener('hashchange', onHash)
     addEventListener('popstate', onHash)
-    return () => { removeEventListener('hashchange', onHash); removeEventListener('popstate', onHash) }
+    addEventListener('hashchange', onHash)
+    return () => { removeEventListener('popstate', onHash); removeEventListener('hashchange', onHash) }
   }, [go, route])
 
   return (
-    <>
-      <a className="skip-link" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus() }}>Skip to content</a>
-      <canvas ref={canvas} className="city" aria-hidden="true" />
-      <div className="city-shade" aria-hidden="true" />
-      <div className="grain" aria-hidden="true" />
+    <LazyMotion features={loadFeatures} strict>
+      <MotionConfig reducedMotion="user">
+        <a className="skip-link" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus() }}>Skip to content</a>
+        <div className="city-poster" aria-hidden="true" />
+        <canvas ref={canvas} className="city" aria-hidden="true" />
+        <canvas ref={canvas3d} className="city3d" aria-hidden="true" />
+        <div className="city-shade" aria-hidden="true" />
+        <div className="grain" aria-hidden="true" />
 
-      <TopBar route={route} go={go} />
-      <Objective text={objective} />
+        <TopBar route={route} go={go} />
+        <Objective text={objective} />
 
-      {route === 'home'
-        ? <Landing go={go} introDone={introDone} setObjective={setObjective} />
-        : <About setObjective={setObjective} />}
+        <AnimatePresence mode="wait" initial={false}>
+          <m.div
+            key={route}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0, transition: { duration: 0.3, ease: EASE } }}
+            exit={{ opacity: 0, y: -12, transition: { duration: 0.15, ease: EASE } }}
+          >
+            {route === 'home'
+              ? <Landing go={go} introDone={introDone} setObjective={setObjective} />
+              : <About setObjective={setObjective} />}
+          </m.div>
+        </AnimatePresence>
 
-      <BottomHud />
+        <BottomHud />
 
-      <div className="wipe" ref={wipe} aria-hidden="true">
-        <div className="slab a" />
-        <div className="slab b" />
-        <div className="msg"><span className="label" style={{ color: 'var(--sodium)' }}>Loading</span><span className="display">The city</span></div>
-      </div>
+        <div className="wipe" aria-hidden="true">
+          <m.div className="slab a" variants={slab(0)} initial="idle" animate={phase} onAnimationComplete={onSlabDone} />
+          <m.div className="slab b" variants={slab(1)} initial="idle" animate={phase} />
+          <m.div className="msg" initial={{ opacity: 0 }} animate={{ opacity: phase === 'hold' ? 1 : 0 }} transition={{ duration: 0.15 }}>
+            <span className="label" style={{ color: 'var(--sodium)' }}>Loading</span><span className="display">{wipeLabel}</span>
+          </m.div>
+        </div>
 
-      {showIntro && <Intro onDone={endIntro} />}
-    </>
+        <AnimatePresence>{showIntro && <Intro key="intro" onDone={endIntro} />}</AnimatePresence>
+      </MotionConfig>
+    </LazyMotion>
   )
 }

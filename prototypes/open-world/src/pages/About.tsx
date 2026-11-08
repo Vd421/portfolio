@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { gsap, ScrollTrigger, SplitText, prefersReduced, world } from '../world'
+import type { Variants } from 'motion/react'
+import * as m from 'motion/react-m'
+import { loadFx, prefersReduced, world, focusHeadingIfNavigated } from '../world'
 import { abilities, person, story } from '../data'
 
 const Todo = ({ children }: { children: string }) => <span className="chip todo">TODO · {children}</span>
+
+// Staggered reveal: chunks enter 100 ms apart with opacity and a 12 px rise (transform only).
+const group: Variants = { hidden: {}, show: { transition: { staggerChildren: 0.1 } } }
+const item: Variants = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.2, 0, 0, 1] } } }
+const reveal = { variants: group, initial: 'hidden', whileInView: 'show', viewport: { once: true, amount: 0.25 } } as const
+const press = { whileHover: { y: -2 }, whileTap: { scale: 0.96 }, transition: { type: 'spring', duration: 0.3, bounce: 0 } } as const
 
 /** Stylised character art: an original silhouette against the dusk, drawn in SVG. */
 function Portrait() {
@@ -37,20 +45,26 @@ export function About({ setObjective }: { setObjective: (s: string) => void }) {
   const root = useRef<HTMLElement>(null)
   const [copied, setCopied] = useState(false)
 
+  useEffect(() => { focusHeadingIfNavigated(root.current) }, [])
+
   useEffect(() => {
     const el = root.current!
     world.target.night = 0.7
     setObjective('Read the profile, then get in touch.')
     if (prefersReduced()) return
-    const ctx = gsap.context(() => {
+    let ctx: { revert: () => void } | null = null
+    let cancelled = false
+    loadFx().then(({ gsap, ScrollTrigger, SplitText }) => {
+    if (cancelled) return
+    ctx = gsap.context(() => {
       ScrollTrigger.create({
         trigger: el, start: 'top top', end: 'bottom bottom',
         onUpdate: (st) => { world.progress = st.progress; world.target.night = 0.7 + st.progress * 0.3; world.target.pan = 0.35 + st.progress * 0.5 },
       })
       const name = new SplitText('.charname', { type: 'chars', aria: 'auto' })
       gsap.timeline({ delay: 0.15 })
-        .from('.portrait', { clipPath: 'inset(100% 0 0 0)', duration: 0.9, ease: 'expo.out' })
-        .from(name.chars, { yPercent: 100, autoAlpha: 0, filter: 'blur(6px)', stagger: 0.03, duration: 0.6, ease: 'expo.out' }, '-=0.6')
+        .from('.portrait', { yPercent: 8, scale: 0.94, autoAlpha: 0, duration: 0.9, ease: 'expo.out' })
+        .from(name.chars, { yPercent: 100, autoAlpha: 0, stagger: 0.03, duration: 0.6, ease: 'expo.out' }, '-=0.6')
         .from('.attrs > *', { autoAlpha: 0, x: -12, stagger: 0.04, duration: 0.3, ease: 'power2.out' }, '-=0.3')
 
       // Depth layers inside the portrait drift at different speeds as you scroll.
@@ -60,12 +74,11 @@ export function About({ setObjective }: { setObjective: (s: string) => void }) {
       })
       gsap.utils.toArray<HTMLElement>('.about-sec h2').forEach((h) =>
         gsap.from(h, { xPercent: -6, skewX: -10, autoAlpha: 0, ease: 'none', scrollTrigger: { trigger: h, start: 'top 92%', end: 'top 60%', scrub: true } }))
-      gsap.utils.toArray<HTMLElement>('.ability, .job').forEach((card, i) =>
-        gsap.from(card, { y: 40, rotate: i % 2 ? 1.5 : -1.5, autoAlpha: 0, filter: 'blur(4px)', duration: 0.5, ease: 'power2.out', scrollTrigger: { trigger: card, start: 'top 88%' } }))
       gsap.from('.phone', { y: 120, rotate: -8, autoAlpha: 0, ease: 'none', scrollTrigger: { trigger: '.phone', start: 'top 100%', end: 'top 55%', scrub: true } })
     }, el)
     requestAnimationFrame(() => ScrollTrigger.refresh())
-    return () => ctx.revert()
+    })
+    return () => { cancelled = true; ctx?.revert() }
   }, [setObjective])
 
   const copy = async () => {
@@ -95,38 +108,38 @@ export function About({ setObjective }: { setObjective: (s: string) => void }) {
         </div>
 
         <div>
-          <section className="about-sec bio" aria-labelledby="bg-title">
+          <m.section className="about-sec bio" aria-labelledby="bg-title" {...reveal}>
             <h2 id="bg-title"><span className="label eyebrow">01 · Background</span>Who is vd</h2>
-            <p>{person.tagline}</p>
-            {person.about.map((p) => <p key={p}>{p}</p>)}
-            <p style={{ marginTop: 14 }}><Todo>a few sentences in your own voice about how you work with customers</Todo></p>
-          </section>
+            <m.p variants={item}>{person.tagline}</m.p>
+            {person.about.map((p) => <m.p key={p} variants={item}>{p}</m.p>)}
+            <m.p variants={item} style={{ marginTop: 14 }}><Todo>a few sentences in your own voice about how you work with customers</Todo></m.p>
+          </m.section>
 
           <section className="about-sec" aria-labelledby="ab-title">
             <h2 id="ab-title"><span className="label eyebrow">02 · Abilities</span>Unlocked</h2>
-            <div className="abilities">
+            <m.div className="abilities" {...reveal}>
               {abilities.map((a) => (
-                <div key={a.name} className="ability">
+                <m.div key={a.name} className="ability" variants={item} whileHover={{ y: -4 }}>
                   <h3>{a.name}</h3>
                   <ul>{a.items.map((i) => <li key={i} className="chip">{i}</li>)}</ul>
-                </div>
+                </m.div>
               ))}
-            </div>
+            </m.div>
           </section>
 
           <section className="about-sec" aria-labelledby="car-title">
             <h2 id="car-title"><span className="label eyebrow">03 · Career</span>Jobs done</h2>
-            <div className="career">
+            <m.div className="career" {...reveal}>
               {jobs.map((j) => (
-                <article key={j.where} className="job">
+                <m.article key={j.where} className="job" variants={item}>
                   <h3>{j.title ?? 'Role'}</h3>
                   <span className="dates">{j.when ?? 'TODO · dates'}{j.now ? ' · Now' : ''}</span>
                   <span className="co">{j.where}</span>
                   {!j.title && <Todo>job title</Todo>}
                   {j.body ? <p style={{ gridColumn: '1 / -1', color: 'var(--paper-2)' }}>{j.body}</p> : <span style={{ gridColumn: '1 / -1' }}><Todo>what you built here</Todo></span>}
-                </article>
+                </m.article>
               ))}
-            </div>
+            </m.div>
           </section>
 
           <section className="about-sec" aria-labelledby="ct-title">
@@ -137,7 +150,7 @@ export function About({ setObjective }: { setObjective: (s: string) => void }) {
                 <div className="contact">
                   <span className="av" aria-hidden="true">@</span>
                   <div className="who"><strong>Email</strong><span data-email>{person.email}</span></div>
-                  <button type="button" onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
+                  <m.button type="button" onClick={copy} {...press} aria-live="polite">{copied ? 'Copied' : 'Copy'}</m.button>
                 </div>
                 <div className="contact">
                   <span className="av" aria-hidden="true">in</span>

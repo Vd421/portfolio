@@ -1,16 +1,23 @@
 // Procedural city at golden hour → night, drawn with Canvas 2D.
-// One renderer drives both the intro cinematic and the scrolling backdrop.
 //   state.night: 0 = golden hour, 1 = deep night
 //   state.pan:   0..1 camera position along the skyline
 //   state.t:     seconds, for ambient motion (traffic, palms, helicopter)
+//
+// Performance: the three skyline layers (silhouettes plus lit windows: thousands of rects)
+// are drawn once into off-screen canvases, cached per quantized night level, and re-cached
+// at most one layer per frame. A frame is then a few gradients, three drawImage calls,
+// and a handful of moving details.
 
-export type CityState = { t: number; night: number; pan: number; zoom?: number }
+export type CityState = { t: number; night: number; pan: number }
 
-type Building = { x: number; w: number; h: number; top: 0 | 1 | 2 | 3; antenna: number; seed: number }
+type Building = { x: number; w: number; h: number; top: 0 | 1 | 2 | 3; antenna: number }
 type Win = { x: number; y: number; w: number; h: number; th: number; warm: boolean }
-type Layer = { p: number; buildings: Building[]; windows: Win[]; base: number }
+type Layer = { p: number; buildings: Building[]; windows: Win[]; span: number; cache: HTMLCanvasElement; level: number }
 type Palm = { x: number; h: number; lean: number; phase: number }
 type Star = { x: number; y: number; r: number; tw: number }
+
+const LEVELS = 14
+const PAD = 40 // buildings start at x = -PAD
 
 function rng(seed: number) {
   let a = seed >>> 0
@@ -35,30 +42,38 @@ const SKY = {
 }
 const LAYER_DUSK = [hex('#5a3a52'), hex('#2e2236'), hex('#14131c')]
 const LAYER_NIGHT = [hex('#151b2c'), hex('#0d121e'), hex('#06090f')]
-const WARM: RGB = hex('#ffc46b')
-const COOL: RGB = hex('#bfe9ff')
 
 export class City {
   private ctx: CanvasRenderingContext2D
   private w = 0
   private h = 0
   private dpr = 1
+  private cacheDpr = 1
   private layers: Layer[] = []
   private palms: Palm[] = []
   private stars: Star[] = []
   private cars: { lane: number; off: number; speed: number; len: number }[] = []
   private worldW = 0
+  private recacheCursor = 0
 
-  constructor(private canvas: HTMLCanvasElement, private seed = 421) {
+  constructor(private canvas: HTMLCanvasElement, private maxDpr = 1.5, private seed = 421) {
     const ctx = canvas.getContext('2d', { alpha: false })
     if (!ctx) throw new Error('Canvas 2D unavailable')
     this.ctx = ctx
     this.resize()
   }
 
+  /** Lower the resolution when frames run long (adaptive quality). */
+  setMaxDpr(v: number) {
+    if (v === this.maxDpr) return
+    this.maxDpr = v
+    this.resize()
+  }
+
   resize() {
     const r = this.canvas.getBoundingClientRect()
-    this.dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+    this.dpr = Math.min(window.devicePixelRatio || 1, this.maxDpr)
+    this.cacheDpr = Math.min(this.dpr, 1.25)
     this.w = Math.max(1, r.width)
     this.h = Math.max(1, r.height)
     this.canvas.width = Math.round(this.w * this.dpr)
@@ -66,64 +81,98 @@ export class City {
     this.build()
   }
 
+  private horizon() { return this.h * 0.74 }
+
   private build() {
     const R = rng(this.seed)
     const { w, h } = this
     this.worldW = w * 2.4
-    const horizon = h * 0.74
+    const horizon = this.horizon()
     this.layers = [0.18, 0.42, 0.75].map((p, li) => {
       const buildings: Building[] = []
       const windows: Win[] = []
-      const span = w + (this.worldW - w) * p + 40
+      const span = w + (this.worldW - w) * p + PAD * 2
       const maxH = [0.34, 0.46, 0.6][li] * h
       const minH = [0.08, 0.12, 0.16][li] * h
-      let x = -40
-      while (x < span) {
+      let x = -PAD
+      while (x < span - PAD) {
         const bw = lerp([28, 40, 56][li], [70, 110, 150][li], R())
-        // A few towers break the roofline; the rest stays low.
         const tall = R() < [0.12, 0.16, 0.12][li]
         const bh = tall ? lerp(maxH * 0.8, maxH, R()) : lerp(minH, maxH * 0.55, Math.pow(R(), 1.4))
-        const b: Building = { x, w: bw, h: bh, top: Math.floor(R() * 4) as Building['top'], antenna: R() < 0.3 ? lerp(10, 40, R()) : 0, seed: R() }
-        buildings.push(b)
-        // Window grid
+        buildings.push({ x, w: bw, h: bh, top: Math.floor(R() * 4) as Building['top'], antenna: R() < 0.3 ? lerp(10, 40, R()) : 0 })
         const cw = [3, 4, 5][li], ch = [4, 6, 8][li], gx = [4, 6, 8][li], gy = [6, 9, 12][li]
         const cols = Math.max(1, Math.floor((bw - gx) / (cw + gx)))
         const rows = Math.max(1, Math.floor((bh - 14) / (ch + gy)))
         const ox = (bw - cols * (cw + gx) + gx) / 2
-        const style = R()
+        const strips = R() < 0.25
         for (let r = 0; r < rows; r++) {
           const floorLit = R()
           for (let c = 0; c < cols; c++) {
-            if (style < 0.25 && c % 2 === 1) continue // strip windows on some buildings
+            if (strips && c % 2 === 1) continue
             windows.push({
-              x: x + ox + c * (cw + gx),
-              y: horizon - bh + 12 + r * (ch + gy),
-              w: style < 0.25 ? cw * 2 + gx : cw,
-              h: ch,
-              th: clamp(floorLit * 0.6 + R() * 0.55),
-              warm: R() < 0.78,
+              x: x + ox + c * (cw + gx), y: horizon - bh + 12 + r * (ch + gy),
+              w: strips ? cw * 2 + gx : cw, h: ch,
+              th: clamp(floorLit * 0.6 + R() * 0.55), warm: R() < 0.78,
             })
           }
         }
         x += bw + lerp(2, [10, 16, 26][li], R())
       }
-      return { p, buildings, windows, base: horizon + li * 2 }
+      const cache = document.createElement('canvas')
+      cache.width = Math.ceil(span * this.cacheDpr)
+      cache.height = Math.ceil((horizon + 4) * this.cacheDpr)
+      return { p, buildings, windows, span, cache, level: -1 }
     })
     this.palms = Array.from({ length: 7 }, (_, i) => ({
-      x: (i / 7) * w * 1.6 + R() * 120 - 60,
-      h: lerp(h * 0.32, h * 0.52, R()),
-      lean: lerp(-0.25, 0.25, R()),
-      phase: R() * Math.PI * 2,
+      x: (i / 7) * w * 1.6 + R() * 120 - 60, h: lerp(h * 0.32, h * 0.52, R()), lean: lerp(-0.25, 0.25, R()), phase: R() * Math.PI * 2,
     }))
-    this.stars = Array.from({ length: 160 }, () => ({ x: R() * w, y: R() * horizon * 0.7, r: R() < 0.1 ? 1.4 : 0.8, tw: R() * 6 }))
-    this.cars = Array.from({ length: 34 }, (_, i) => ({ lane: i % 2, off: R(), speed: lerp(70, 160, R()), len: lerp(18, 46, R()) }))
+    this.stars = Array.from({ length: 140 }, () => ({ x: R() * w, y: R() * horizon * 0.7, r: R() < 0.1 ? 1.4 : 0.8, tw: R() * 6 }))
+    this.cars = Array.from({ length: 30 }, (_, i) => ({ lane: i % 2, off: R(), speed: lerp(70, 160, R()), len: lerp(18, 46, R()) }))
+    // Fill every cache now so the first frame is complete.
+    this.layers.forEach((_, i) => this.paintLayer(i, 0))
+  }
+
+  /** Draw one skyline layer, with the windows lit at this night level, into its cache. */
+  private paintLayer(li: number, level: number) {
+    const L = this.layers[li]
+    const c = L.cache.getContext('2d')!
+    const n = level / LEVELS
+    const horizon = this.horizon()
+    c.setTransform(this.cacheDpr, 0, 0, this.cacheDpr, PAD * this.cacheDpr, 0)
+    c.clearRect(-PAD, 0, L.span, horizon + 4)
+    c.fillStyle = mix(LAYER_DUSK[li], LAYER_NIGHT[li], n)
+    for (const b of L.buildings) {
+      const top = horizon - b.h
+      c.fillRect(b.x, top, b.w, b.h + 4)
+      if (b.top === 1) c.fillRect(b.x + b.w * 0.2, top - 8, b.w * 0.6, 8)
+      if (b.top === 2) { c.fillRect(b.x + b.w * 0.3, top - 16, b.w * 0.4, 16); c.fillRect(b.x + b.w * 0.42, top - 26, b.w * 0.16, 10) }
+      if (b.top === 3) { c.beginPath(); c.moveTo(b.x, top); c.lineTo(b.x + b.w / 2, top - b.w * 0.35); c.lineTo(b.x + b.w, top); c.fill() }
+      if (b.antenna) c.fillRect(b.x + b.w / 2 - 1, top - b.antenna - (b.top === 2 ? 26 : 0), 2, b.antenna)
+    }
+    if (n < 0.8 && li > 0) {
+      c.fillStyle = `rgba(255,150,90,${0.22 * (1 - n / 0.8)})`
+      for (const b of L.buildings) c.fillRect(b.x, horizon - b.h, 2, b.h)
+    }
+    const lit = n * 1.15 + 0.05
+    for (const warm of [true, false]) {
+      c.fillStyle = warm ? `rgba(255,196,107,${li === 0 ? 0.55 : 0.9})` : `rgba(191,233,255,${li === 0 ? 0.55 : 0.9})`
+      for (const wn of L.windows) if (wn.warm === warm && wn.th <= lit) c.fillRect(wn.x, wn.y, wn.w, wn.h)
+    }
+    L.level = level
   }
 
   render(s: CityState) {
     const { ctx, w, h, dpr } = this
     const n = clamp(s.night)
-    const horizon = h * 0.74
+    const horizon = this.horizon()
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+    // Re-cache at most one stale layer per frame, so scrolling never stalls.
+    const want = Math.round(n * LEVELS)
+    for (let k = 0; k < 3; k++) {
+      const li = (this.recacheCursor + k) % 3
+      if (this.layers[li].level !== want) { this.paintLayer(li, want); this.recacheCursor = li + 1; break }
+    }
 
     // Sky
     const g = ctx.createLinearGradient(0, 0, 0, horizon)
@@ -134,7 +183,6 @@ export class City {
     ctx.fillStyle = g
     ctx.fillRect(0, 0, w, horizon + 2)
 
-    // Stars fade in after sunset
     if (n > 0.35) {
       const a = (n - 0.35) / 0.65
       ctx.fillStyle = '#fff'
@@ -161,24 +209,17 @@ export class City {
       ctx.globalAlpha = 1 - n
       ctx.fillStyle = disc
       ctx.beginPath(); ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2); ctx.fill()
-      // Heat bands across the disc
       ctx.fillStyle = mix(SKY.dusk[2], SKY.night[2], n)
-      for (let i = 0; i < 5; i++) {
-        const y = sunY + sunR * (0.15 + i * 0.17)
-        ctx.fillRect(sunX - sunR, y, sunR * 2, 2 + i * 1.6)
-      }
+      for (let i = 0; i < 5; i++) ctx.fillRect(sunX - sunR, sunY + sunR * (0.15 + i * 0.17), sunR * 2, 2 + i * 1.6)
       ctx.globalAlpha = 1
     }
 
-    // Helicopter with a searchlight at night
+    // Helicopter, with a searchlight at night
     const hp = ((s.t / 26) % 1.4) - 0.2
     const hx = lerp(-80, w + 80, hp)
     const hy = h * 0.26 + Math.sin(s.t * 0.8) * 6
     if (n > 0.4) {
-      const beam = ctx.createLinearGradient(hx, hy, hx - 60, horizon)
-      beam.addColorStop(0, `rgba(255,240,200,${0.22 * (n - 0.4)})`)
-      beam.addColorStop(1, 'rgba(255,240,200,0)')
-      ctx.fillStyle = beam
+      ctx.fillStyle = `rgba(255,240,200,${0.1 * (n - 0.4)})`
       ctx.beginPath(); ctx.moveTo(hx, hy + 4); ctx.lineTo(hx - 150, horizon); ctx.lineTo(hx + 30, horizon); ctx.closePath(); ctx.fill()
     }
     ctx.fillStyle = mix(hex('#2a1d24'), hex('#04060a'), n)
@@ -188,64 +229,32 @@ export class City {
     ctx.fillRect(hx - 22 + Math.sin(s.t * 40) * 6, hy - 9, 44, 1.5)
     if (Math.sin(s.t * 5) > 0.6) { ctx.fillStyle = '#ff3b30'; ctx.fillRect(hx + 35, hy - 7, 2.5, 2.5) }
 
-    // Distant hills, then three skyline layers with parallax
+    // Distant hills and haze
     ctx.fillStyle = mix(hex('#7b4a5a'), hex('#0c1020'), n)
     ctx.beginPath(); ctx.moveTo(0, horizon)
-    for (let x = 0; x <= w; x += 12) {
+    for (let x = 0; x <= w; x += 16) {
       const xx = x + s.pan * w * 0.08
       ctx.lineTo(x, horizon - h * 0.05 - Math.sin(xx * 0.004) * h * 0.03 - Math.sin(xx * 0.011 + 1) * h * 0.012)
     }
     ctx.lineTo(w, horizon); ctx.closePath(); ctx.fill()
+    if (n < 1) {
+      const haze = ctx.createLinearGradient(0, horizon - h * 0.12, 0, horizon)
+      haze.addColorStop(0, 'rgba(255,170,110,0)')
+      haze.addColorStop(1, `rgba(255,150,100,${0.28 * (1 - n)})`)
+      ctx.fillStyle = haze
+      ctx.fillRect(0, horizon - h * 0.12, w, h * 0.12)
+    }
 
-    // Low haze in front of the hills
-    const haze = ctx.createLinearGradient(0, horizon - h * 0.12, 0, horizon)
-    haze.addColorStop(0, 'rgba(255,170,110,0)')
-    haze.addColorStop(1, `rgba(255,150,100,${0.28 * (1 - n)})`)
-    ctx.fillStyle = haze
-    ctx.fillRect(0, horizon - h * 0.12, w, h * 0.12)
-
+    // Skyline layers from cache, with parallax
     this.layers.forEach((L, li) => {
-      const ox = -s.pan * (this.worldW - w) * L.p - Math.sin(s.t * 0.05) * 6 * L.p
-      const col = mix(LAYER_DUSK[li], LAYER_NIGHT[li], n)
-      ctx.fillStyle = col
-      for (const b of L.buildings) {
-        const x = b.x + ox
-        if (x > w || x + b.w < 0) continue
-        const top = horizon - b.h
-        ctx.fillRect(x, top, b.w, b.h + 2)
-        if (b.top === 1) ctx.fillRect(x + b.w * 0.2, top - 8, b.w * 0.6, 8)
-        if (b.top === 2) { ctx.fillRect(x + b.w * 0.3, top - 16, b.w * 0.4, 16); ctx.fillRect(x + b.w * 0.42, top - 26, b.w * 0.16, 10) }
-        if (b.top === 3) { ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x + b.w / 2, top - b.w * 0.35); ctx.lineTo(x + b.w, top); ctx.fill() }
-        if (b.antenna) {
-          ctx.fillRect(x + b.w / 2 - 1, top - b.antenna - (b.top === 2 ? 26 : 0), 2, b.antenna)
-        }
-      }
-      // Rim light from the sunset on the near edge of each building
-      if (n < 0.8 && li > 0) {
-        ctx.fillStyle = `rgba(255,150,90,${0.22 * (1 - n / 0.8)})`
-        for (const b of L.buildings) {
-          const x = b.x + ox
-          if (x > w || x + b.w < 0) continue
-          ctx.fillRect(x, horizon - b.h, 2, b.h)
-        }
-      }
-      // Windows switch on as the night deepens
-      const lit = n * 1.15 + 0.05
-      for (const warm of [true, false]) {
-        ctx.fillStyle = mix(warm ? WARM : COOL, warm ? WARM : COOL, 0, li === 0 ? 0.55 : 0.9)
-        for (const wn of L.windows) {
-          if (wn.warm !== warm || wn.th > lit) continue
-          const x = wn.x + ox
-          if (x > w || x + wn.w < 0) continue
-          ctx.fillRect(x, wn.y, wn.w, wn.h)
-        }
-      }
-      // Aviation lights on antennas
+      const sx = s.pan * (this.worldW - w) * L.p + Math.sin(s.t * 0.05) * 6 * L.p + PAD
+      ctx.drawImage(L.cache, sx * this.cacheDpr, 0, w * this.cacheDpr, (horizon + 4) * this.cacheDpr, 0, 0, w, horizon + 4)
+      // Aviation lights blink on the antennas
       if (n > 0.3 && Math.sin(s.t * 2.2 + li) > 0) {
         ctx.fillStyle = '#ff4d3d'
         for (const b of L.buildings) {
           if (!b.antenna) continue
-          const x = b.x + ox
+          const x = b.x - (sx - PAD)
           if (x > w || x < 0) continue
           ctx.fillRect(x + b.w / 2 - 1.5, horizon - b.h - b.antenna - (b.top === 2 ? 26 : 0) - 2, 3, 3)
         }
@@ -253,38 +262,32 @@ export class City {
     })
 
     // Ground and an elevated freeway with traffic
-    const gy = horizon
-    const ground = ctx.createLinearGradient(0, gy, 0, h)
-    ground.addColorStop(0, mix(hex('#1b1420'), hex('#05070b'), n))
-    ground.addColorStop(1, mix(hex('#0b0a10'), hex('#020305'), n))
-    ctx.fillStyle = ground
-    ctx.fillRect(0, gy, w, h - gy)
-    const roadY = gy + h * 0.035
+    ctx.fillStyle = mix(hex('#140f18'), hex('#030407'), n)
+    ctx.fillRect(0, horizon, w, h - horizon)
+    const roadY = horizon + h * 0.035
     ctx.fillStyle = mix(hex('#100d14'), hex('#030407'), n)
     ctx.fillRect(0, roadY - 3, w, 16)
     ctx.fillStyle = `rgba(255,190,120,${0.25 + 0.4 * n})`
     ctx.fillRect(0, roadY - 4, w, 1)
-    // Pillars
     ctx.fillStyle = mix(hex('#0e0b12'), hex('#020304'), n)
     for (let x = -((s.pan * w * 1.4) % 140); x < w; x += 140) ctx.fillRect(x, roadY + 12, 10, h * 0.08)
-    // Light streaks
-    ctx.globalCompositeOperation = 'lighter'
+    const headA = 0.55 + 0.45 * n
     for (const c of this.cars) {
       const dir = c.lane === 0 ? -1 : 1
       const span = w + 200
       const pos = ((c.off * span + dir * c.speed * s.t) % span + span) % span - 100
       const y = roadY + (c.lane === 0 ? 1 : 6)
-      const grad = ctx.createLinearGradient(pos, 0, pos - dir * c.len, 0)
-      const head = c.lane === 0 ? '255,244,214' : '255,70,50'
-      grad.addColorStop(0, `rgba(${head},${0.55 + 0.45 * n})`)
-      grad.addColorStop(1, `rgba(${head},0)`)
-      ctx.fillStyle = grad
-      ctx.fillRect(Math.min(pos, pos - dir * c.len), y, c.len, 2.5)
+      const rgb = c.lane === 0 ? '255,244,214' : '255,70,50'
+      // A streak as three segments of falling alpha: no per-car gradient objects.
+      for (let k = 0; k < 3; k++) {
+        ctx.fillStyle = `rgba(${rgb},${headA * (1 - k / 3)})`
+        const seg = c.len / 3
+        ctx.fillRect(dir < 0 ? pos + k * seg : pos - (k + 1) * seg, y, seg, 2.5)
+      }
     }
-    ctx.globalCompositeOperation = 'source-over'
 
     // Foreground palms sway against the sky
-    ctx.strokeStyle = ctx.fillStyle = mix(hex('#0d0a10'), hex('#010203'), n)
+    ctx.strokeStyle = mix(hex('#0d0a10'), hex('#010203'), n)
     for (const p of this.palms) {
       const x = p.x - s.pan * w * 0.9
       if (x < -200 || x > w + 200) continue
@@ -295,22 +298,14 @@ export class City {
       ctx.lineWidth = 7
       ctx.beginPath(); ctx.moveTo(x, base); ctx.quadraticCurveTo(x + p.lean * p.h * 0.2, base - p.h * 0.55, tx, ty); ctx.stroke()
       ctx.lineWidth = 3.2
+      ctx.beginPath()
       for (let f = 0; f < 9; f++) {
         const a = (f / 9) * Math.PI * 2 + Math.sin(s.t * 1.1 + p.phase + f) * 0.06
         const len = p.h * 0.32
-        const ex = tx + Math.cos(a) * len
-        const ey = ty + Math.sin(a) * len * 0.5 + len * 0.28
-        ctx.beginPath(); ctx.moveTo(tx, ty)
-        ctx.quadraticCurveTo(tx + Math.cos(a) * len * 0.5, ty + Math.sin(a) * len * 0.25 - len * 0.18, ex, ey)
-        ctx.stroke()
+        ctx.moveTo(tx, ty)
+        ctx.quadraticCurveTo(tx + Math.cos(a) * len * 0.5, ty + Math.sin(a) * len * 0.25 - len * 0.18, tx + Math.cos(a) * len, ty + Math.sin(a) * len * 0.5 + len * 0.28)
       }
+      ctx.stroke()
     }
-
-    // Vignette
-    const v = ctx.createRadialGradient(w / 2, h * 0.55, Math.min(w, h) * 0.35, w / 2, h * 0.55, Math.max(w, h) * 0.8)
-    v.addColorStop(0, 'rgba(0,0,0,0)')
-    v.addColorStop(1, 'rgba(0,0,0,0.55)')
-    ctx.fillStyle = v
-    ctx.fillRect(0, 0, w, h)
   }
 }
