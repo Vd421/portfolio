@@ -116,6 +116,96 @@ Keep these, or the bundle and Lighthouse regress:
 - Shared-layout cards (`layoutId`) unmount while their expanded view is open; restore focus to the
   remounted trigger afterwards.
 
+## Open World look & motion spec (`prototypes/open-world/`)
+
+The prototype is an open-world-game-inspired portfolio: sunset city, game HUD, cinematic scroll. Everything
+below is original art and copy under ground rule 2. No real game names, cars, logos or screens.
+
+### Aesthetic
+
+- **Palette** (tokens in one config file): dusk orange `#FF7A3D` → pink `#FF4F8B` sky gradient, deep teal
+  shadows `#0E2A33`, near-black base `#0A0C10`, HUD white `#F4F1EA`, cash green `#3DDC84`, star gold
+  `#FFC53D`. Measure contrast; text on gradients sits on a scrim.
+- **Texture**: subtle film grain + soft vignette as static overlays (no animated filters). Sections read
+  like painted posters: big flat shapes, hard shadows, generous negative space. One accent per screen.
+- **Type**:
+  - Name / display: **Anton** (self-host via `@fontsource/anton`, `font-display: swap`), uppercase,
+    tight tracking (`-0.01em`), `clamp(3.5rem, 11vw, 9rem)`, text-wrap `balance`.
+  - Name underline: a thick bar under the name (`0.12em` tall, cash-green or sunset gradient), drawn as a
+    pseudo-element that animates `transform: scaleX(0 → 1)` from the left, 600 ms `cubic-bezier(.2,.8,.2,1)`,
+    after the name lands. Static, full-width bar when reduced motion or JS is off.
+  - HUD / labels: **JetBrains Mono** or **Space Mono**, uppercase, `0.08em` tracking, small sizes.
+  - Body: **Inter** (or system UI), 16–18 px, 1.6 line-height, max 65ch.
+  - Never Pricedown or any game font.
+- Spacing on an 8 px scale; sections are full-viewport (`min-height: 100svh`) with consistent gutters.
+
+### Loading screen (first visit per session only)
+
+- Full-screen poster art (original illustration or my own photo) with a slow Ken Burns move:
+  `transform: scale(1 → 1.08) translate(-1%, -1%)` over the whole duration, linear.
+- Bottom: rotating "tips" from `src/data.ts` (`tips: string[]`, real facts about Vaibhav only; `TODO`
+  entries are skipped). One tip per ~1.2 s, opacity + 8 px rise crossfade.
+- Bottom-right: small spinning loader (`transform: rotate`) + mono "LOADING" label.
+- ~3 s total, or until fonts + hero are ready (whichever is later, cap 4 s), then crossfade (400 ms
+  opacity) into the site. **Skippable**: click, tap, Enter, Space or Esc; a visible "Skip" button.
+- Content underneath is fully rendered and readable the whole time (overlay only). Store a
+  `sessionStorage` flag (in try/catch) so it doesn't replay on every navigation.
+- Reduced motion or JS off: no loading screen at all.
+
+### Hero / HUD
+
+- Name big in Anton with the underline above. Tagline below in body font, then a CTA row.
+- Entrance: name reveals per word (SplitText, opacity + 24 px rise, 80 ms stagger), then underline,
+  then tagline and HUD fade in. Total ≤ 1.4 s. Plays once.
+- **Top-right HUD**:
+  - Cash-style counter in green (`$` prefix, mono, tabular-nums) that ticks up via GSAP on a proxy
+    object and writes text. Cycles labelled stats: years coding, projects shipped, GitHub commits.
+    Values come from `src/data.ts`; unknown values stay `TODO` and render as a placeholder, never a
+    guessed number. `aria-live="off"`; the final values exist as static text for screen readers.
+  - 5 "wanted"-style stars (original SVG star) that light up one by one (opacity + scale 0.6 → 1,
+    120 ms stagger) to show a skill level from `data.ts`. Label it, e.g. "SKILL LEVEL 4/5".
+- **Bottom-left minimap**: circular, original stylized street grid in SVG, with a blip per section
+  (Hero, About, Projects, Experience, Skills, Contact). The map rotates slightly with scroll
+  (`rotate` mapped from scroll progress, ±12° max, via ScrollTrigger `scrub`). Active section's blip
+  pulses once on enter. Blips are buttons that scroll to their section (keyboard + 44 px hit area).
+  Mobile: minimap collapses into a bottom nav.
+- Pause control for anything that loops > 5 s (counter cycling, ambient sky).
+
+### Hypercar (hero centerpiece)
+
+- An **original** low, wide, single-seat hypercar: long tail, central fin, narrow canopy,
+  angular side intakes. Inspired by that silhouette class, not a copy of any game or real car. No
+  in-game car names (don't call it "Deveste Eight" anywhere: code, copy, alt text, filenames).
+- Desktop + capable GPU: low-poly Three.js model built from my own geometry (or a model I supply
+  under a licence that allows it), lit for sunset, with a slow turntable and a subtle headlight glint.
+  Lazy-load after first paint; pause off-screen and in hidden tabs.
+- Fallback (mobile, reduced motion, no WebGL, JS off): a flat poster-style SVG/PNG of the same car.
+- Scroll beat: as the hero scrolls out, the car drives across and out of frame (transform only,
+  `scrub`), handing off to the next section.
+
+### Scroll animation: one beat per section, not constant motion
+
+- Every page/section gets **one** entrance moment when it enters the viewport (ScrollTrigger
+  `start: "top 75%"`, `once: true`), not continuous per-frame effects everywhere.
+- Default reveal: heading (opacity + 24 px rise, 500 ms), then children with the 100 ms stagger
+  (opacity + 12 px rise over 300 ms) per the Krehel values.
+- Signature beats (max one per section):
+  - About ("stats"): stat bars fill via `scaleX` from the left, staggered.
+  - Projects: horizontal pinned run of cards on desktop (keep the focus-scroll rule), stacked on mobile.
+  - Experience: timeline line grows via `scaleY`, entries slide in alternating sides.
+  - Skills: icons pop in on a radial layout (scale 0.8 → 1 + opacity).
+  - Contact: a phone-style panel slides up from bottom-right.
+- Lenis smooth scroll on desktop only; GSAP ticker drives Lenis (single clock in `src/world.ts`).
+- All timings/eases/colors live in one config object (`src/motion-config.ts`).
+- Reduced motion: no pinning, no scrub, no Lenis; every reveal becomes a 200 ms opacity fade or nothing.
+- Everything must look finished if ScrollTrigger never runs (rule 5).
+
+### Build order
+
+1. Tokens, fonts and type scale. 2. Loading screen. 3. Hero name + underline + HUD.
+4. Minimap. 5. Hypercar (2D fallback first, then 3D). 6. Section scroll beats.
+Stop after step 3 for Vaibhav to review before continuing.
+
 ## Working style
 
 - Verify UI in a real browser (Playwright; Chromium is preinstalled) at 1440, 390 and 320 px, JS on and
