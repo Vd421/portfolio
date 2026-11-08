@@ -12,3 +12,9 @@ static/dist/
 # Env
 .env
 .DS_Store
+
+# Node (prototypes only)
+node_modules/
+.parcel-cache/
+prototypes/open-world/dist/
+prototypes/open-world/reel/out/
