@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import type { Variants } from 'motion/react'
 import * as m from 'motion/react-m'
 import { loadFx, prefersReduced, world, focusHeadingIfNavigated } from '../world'
 import { abilities, person, story } from '../data'
+import { ContactPhone } from '../components/ContactPhone'
 
 const Todo = ({ children }: { children: string }) => <span className="chip todo">TODO · {children}</span>
 
@@ -10,7 +11,6 @@ const Todo = ({ children }: { children: string }) => <span className="chip todo"
 const group: Variants = { hidden: {}, show: { transition: { staggerChildren: 0.1 } } }
 const item: Variants = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.2, 0, 0, 1] } } }
 const reveal = { variants: group, initial: 'hidden', whileInView: 'show', viewport: { once: true, amount: 0.25 } } as const
-const press = { whileHover: { y: -2 }, whileTap: { scale: 0.96 }, transition: { type: 'spring', duration: 0.3, bounce: 0 } } as const
 
 /** Stylised character art: an original silhouette against the dusk, drawn in SVG. */
 function Portrait() {
@@ -43,7 +43,6 @@ function Portrait() {
 
 export function About() {
   const root = useRef<HTMLElement>(null)
-  const [copied, setCopied] = useState(false)
 
   useEffect(() => { focusHeadingIfNavigated(root.current) }, [])
 
@@ -79,15 +78,6 @@ export function About() {
     })
     return () => { cancelled = true; ctx?.revert() }
   }, [])
-
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(person.email); setCopied(true); setTimeout(() => setCopied(false), 2000) }
-    catch {
-      const s = document.querySelector('[data-email]'); if (!s) return
-      const r = document.createRange(); r.selectNodeContents(s)
-      const sel = getSelection(); sel?.removeAllRanges(); sel?.addRange(r)
-    }
-  }
 
   const jobs = [...story].reverse().filter((s) => s.where !== 'VIT Chennai')
 
@@ -143,31 +133,7 @@ export function About() {
 
           <section className="about-sec" aria-labelledby="ct-title">
             <h2 id="ct-title"><span className="label eyebrow">04 · Contacts</span>Call vd</h2>
-            <div className="phone">
-              <div className="phone-screen">
-                <div className="phone-status" aria-hidden="true"><span>vdOS</span><span>{person.coords}</span></div>
-                <div className="contact">
-                  <span className="av" aria-hidden="true">@</span>
-                  <div className="who"><strong>Email</strong><span data-email>{person.email}</span></div>
-                  <m.button type="button" onClick={copy} {...press} aria-live="polite">{copied ? 'Copied' : 'Copy'}</m.button>
-                </div>
-                <div className="contact">
-                  <span className="av" aria-hidden="true">in</span>
-                  <div className="who"><strong>LinkedIn</strong><span>linkedin.com/in/vaibhav-dhir</span></div>
-                  <a href={person.linkedin} target="_blank" rel="noreferrer">Open<span className="sr-only"> LinkedIn profile</span></a>
-                </div>
-                <div className="contact">
-                  <span className="av" aria-hidden="true">gh</span>
-                  <div className="who"><strong>GitHub</strong><span>github.com/Vd421</span></div>
-                  <a href={person.github} target="_blank" rel="noreferrer">Open<span className="sr-only"> GitHub profile</span></a>
-                </div>
-                <div className="contact">
-                  <span className="av" aria-hidden="true">cv</span>
-                  <div className="who"><strong>Resume</strong><span>Coming soon</span></div>
-                  <Todo>resume PDF</Todo>
-                </div>
-              </div>
-            </div>
+            <ContactPhone />
           </section>
         </div>
       </div>

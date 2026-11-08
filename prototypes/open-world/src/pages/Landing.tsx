@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { AnimatePresence } from 'motion/react'
 import * as m from 'motion/react-m'
 import { loadFx, lenisStop, prefersReduced, scrollToEl, scrollToY, world, focusHeadingIfNavigated } from '../world'
-import { missions, person, story, type Mission } from '../data'
+import { abilities, aboutStats, missions, person, sections, story, type Mission, type SectionId } from '../data'
 import type { Route } from '../components/Hud'
 import { LottieIcon } from '../components/LottieIcon'
 import { pingAnim } from '../lottie'
 import { HudStats } from '../components/HudStats'
-import { distance, gsapEase, time } from '../motion-config'
+import { HeroCar } from '../components/HeroCar'
+import { Minimap } from '../components/Minimap'
+import { ContactPhone } from '../components/ContactPhone'
+import { distance, gsapEase, revealStart, time } from '../motion-config'
 
 const Todo = ({ children }: { children: string }) => <span className="chip todo">TODO · {children}</span>
 const Arrow = () => (
@@ -69,11 +72,43 @@ function Briefing({ mission, onClose }: { mission: Mission; onClose: () => void 
   )
 }
 
+/** Section heading: eyebrow + display title. `data-reveal-head` marks it for the entrance. */
+function SecHead({ id, eyebrow, title }: { id: string; eyebrow: string; title: string }) {
+  return (
+    <div className="sec-head" data-reveal-head>
+      <span className="label eyebrow">{eyebrow}</span>
+      <h2 id={id} className="display">{title}</h2>
+    </div>
+  )
+}
+
+/** Skills orbit: categories on the inner ring, skills on the outer ring, each group on its own arc. */
+function skillPositions() {
+  const total = abilities.reduce((n, g) => n + g.items.length, 0)
+  let k = 0
+  return abilities.map((g, gi) => {
+    const start = k
+    const items = g.items.map((name) => {
+      const a = ((k++ + 0.5) / total) * Math.PI * 2 - Math.PI / 2
+      return { name, x: 50 + Math.cos(a) * 44, y: 50 + Math.sin(a) * 44 }
+    })
+    const mid = ((start + g.items.length / 2) / total) * Math.PI * 2 - Math.PI / 2
+    return { ...g, gi, cat: { x: 50 + Math.cos(mid) * 22, y: 50 + Math.sin(mid) * 22 }, items }
+  })
+}
+const monogram = (s: string) => {
+  const clean = s.replace(/[^A-Za-z0-9+#]/g, ' ').trim()
+  const words = clean.split(/\s+/)
+  return words.length > 1 ? (words[0][0] + words[1][0]).toUpperCase() : clean.slice(0, 2).replace(/^./, (c) => c.toUpperCase())
+}
+
 export function Landing({ go, introDone }: { go: (r: Route) => void; introDone: boolean }) {
   const root = useRef<HTMLElement>(null)
   const [open, setOpen] = useState<Mission | null>(null)
+  const [active, setActive] = useState<SectionId>('hero')
   // The HUD waits for the hero entrance; under reduced motion it is simply there.
   const [hudIn, setHudIn] = useState(prefersReduced)
+  const orbit = skillPositions()
 
   useEffect(() => { focusHeadingIfNavigated(root.current) }, [])
 
@@ -100,8 +135,17 @@ export function Landing({ go, introDone }: { go: (r: Route) => void; introDone: 
           world.target.pan = 0.16 + st.progress * 0.84
         },
       })
+      // The minimap follows the section in the middle of the screen. Created after any pin
+      // (see trackSections below) so their positions include the pinned run's extra scroll.
+      const trackSections = () => {
+        sections.forEach((s) => ScrollTrigger.create({
+          trigger: `#${s.id}`, start: 'top center', end: 'bottom center', refreshPriority: -1,
+          onToggle: (st) => { if (st.isActive) setActive(s.id) },
+        }))
+        ScrollTrigger.sort()
+      }
 
-      if (reduced) { setHudIn(true); return }
+      if (reduced) { trackSections(); setHudIn(true); return } // reduced motion: no pin, no scrub, no reveals
 
       // Hero entrance, once: name per word → underline draws → tagline, CTAs and HUD. ≤ 1.4 s.
       const split = new SplitText('.hero-name', { type: 'words', aria: 'auto' })
@@ -111,23 +155,46 @@ export function Landing({ go, introDone }: { go: (r: Route) => void; introDone: 
         .from('.hero-loc, .hero-tagline, .hero .cta-row', { autoAlpha: 0, y: distance.childRise, duration: 0.2, stagger: 0.04, ease: gsapEase.out }, '>-0.15')
         .call(() => setHudIn(true), [], '<')
 
-      // Section titles slam in with a skew, scrubbed to the scroll.
-      gsap.utils.toArray<HTMLElement>('.sec-head h2').forEach((h) => {
-        gsap.from(h, { xPercent: -8, skewX: -12, autoAlpha: 0.2, ease: 'none',
-          scrollTrigger: { trigger: h, start: 'top 90%', end: 'top 45%', scrub: true } })
-      })
+      // One entrance per section: heading, then children 100 ms apart, then the section's signature beat.
+      const beat = (sel: string, signature?: (tl: gsap.core.Timeline) => void) => {
+        const sec = el.querySelector<HTMLElement>(sel)
+        if (!sec) return
+        const tl = gsap.timeline({ scrollTrigger: { trigger: sec, start: revealStart, once: true } })
+        const head = sec.querySelector('[data-reveal-head]')
+        if (head) tl.from(head, { autoAlpha: 0, y: distance.headingRise, duration: time.headingReveal, ease: gsapEase.out })
+        const kids = sec.querySelectorAll('[data-reveal]')
+        if (kids.length) tl.from(kids, { autoAlpha: 0, y: distance.childRise, duration: time.reveal, stagger: time.stagger, ease: gsapEase.out }, '-=0.2')
+        signature?.(tl)
+      }
 
-      // Missions: a pinned horizontal run on wide screens.
+      beat('#about', (tl) => tl.fromTo('.stat-fill', { scaleX: 0 }, {
+        scaleX: (_i: number, t: HTMLElement) => Number(t.style.getPropertyValue('--v')) || 0,
+        duration: time.barFill, stagger: time.barStagger, ease: gsapEase.out,
+      }, '-=0.1'))
+
+      beat('#experience', (tl) => tl
+        .from('.timeline-line', { scaleY: 0, duration: time.timelineGrow, ease: gsapEase.inOut }, 0.2)
+        .from('.tl-entry', {
+          autoAlpha: 0, duration: time.reveal * 1.4, stagger: time.stagger * 1.5, ease: gsapEase.out,
+          x: (i: number) => (wide ? (i % 2 === 0 ? -distance.timelineSlide : distance.timelineSlide) : distance.timelineSlide),
+        }, 0.35))
+
+      beat('#skills', (tl) => tl.from('.skill, .orbit-cat, .orbit-core', {
+        autoAlpha: 0, scale: 0.8, duration: time.skillPop, stagger: time.skillStagger, ease: gsapEase.out,
+      }, '-=0.1'))
+
+      beat('#contact', (tl) => tl.from('.contact-phone', {
+        autoAlpha: 0, y: distance.phoneRise, x: wide ? 40 : 0, duration: time.phoneSlide, ease: gsapEase.out,
+      }, '-=0.2'))
+
+      // Projects: the pinned horizontal run on wide screens; a simple reveal elsewhere.
       const track = el.querySelector<HTMLElement>('.missions-track')!
       if (wide) {
+        beat('#projects')
         const dist = () => Math.max(0, track.scrollWidth - innerWidth + 32)
         const run = gsap.to(track, {
           x: () => -dist(), ease: 'none',
-          scrollTrigger: { trigger: '#missions', start: 'top top', end: () => `+=${dist()}`, pin: true, scrub: 0.6, invalidateOnRefresh: true, anticipatePin: 1 },
-        })
-        gsap.utils.toArray<HTMLElement>('.mission-slot').forEach((card) => {
-          gsap.from(card, { rotateY: -14, z: -80, autoAlpha: 0.4, transformPerspective: 900, ease: 'none',
-            scrollTrigger: { trigger: card, containerAnimation: run, start: 'left 100%', end: 'left 60%', scrub: true } })
+          scrollTrigger: { trigger: '#projects', start: 'top top', end: () => `+=${dist()}`, pin: true, scrub: 0.6, invalidateOnRefresh: true, anticipatePin: 1 },
         })
         // Keyboard focus on an off-screen card scrolls the run so the card is in view (WCAG 2.4.11).
         const st = run.scrollTrigger!
@@ -139,24 +206,11 @@ export function Landing({ go, introDone }: { go: (r: Route) => void; introDone: 
           scrollToY(st.start + p * (st.end - st.start))
         }
         track.addEventListener('focusin', onFocus)
+        trackSections()
         return () => track.removeEventListener('focusin', onFocus)
-      } else {
-        gsap.utils.toArray<HTMLElement>('.mission-slot').forEach((card) =>
-          gsap.from(card, { y: 40, autoAlpha: 0, duration: 0.5, ease: 'power2.out', scrollTrigger: { trigger: card, start: 'top 85%' } }))
       }
-
-      // Story: the metro line grows down (scaleY) and each station slides in as you pass it.
-      gsap.fromTo('.metro .route', { scaleY: 0 }, { scaleY: 1, transformOrigin: '50% 0%', ease: 'none',
-        scrollTrigger: { trigger: '.metro', start: 'top 70%', end: 'bottom 60%', scrub: true } })
-      gsap.utils.toArray<HTMLElement>('.stop').forEach((stop) => {
-        gsap.from(stop.children, { x: 30, autoAlpha: 0, stagger: 0.08, duration: 0.4, ease: 'power2.out',
-          scrollTrigger: { trigger: stop, start: 'top 75%' } })
-      })
-
-      // Finale: the call to action builds as you arrive.
-      const fin = new SplitText('.finale h2', { type: 'words', aria: 'auto' })
-      gsap.from(fin.words, { yPercent: 80, autoAlpha: 0, rotate: -4, stagger: 0.08, ease: 'none',
-        scrollTrigger: { trigger: '.finale', start: 'top 80%', end: 'top 30%', scrub: true } })
+      beat('#projects', (tl) => tl.from('.mission-slot', { autoAlpha: 0, y: distance.childRise, duration: time.reveal, stagger: time.stagger, ease: gsapEase.out }, '-=0.2'))
+      trackSections()
     }, el)
     requestAnimationFrame(() => ScrollTrigger.refresh())
     })
@@ -174,19 +228,39 @@ export function Landing({ go, introDone }: { go: (r: Route) => void; introDone: 
           </h1>
           <p className="lead hero-tagline">{person.roles[0]}. {person.tagline}</p>
           <div className="cta-row">
-            <m.a className="btn primary" href="#missions" {...press} onClick={(e) => { e.preventDefault(); scrollToEl('#missions') }}>Start main mission <Arrow /></m.a>
+            <m.a className="btn primary" href="#projects" {...press} onClick={(e) => { e.preventDefault(); scrollToEl('#projects') }}>Start main mission <Arrow /></m.a>
             <m.a className="btn" href="#about" {...press} onClick={(e) => { e.preventDefault(); go('about') }}>View profile</m.a>
           </div>
         </div>
+        <HeroCar ready={introDone} />
         <HudStats entered={hudIn} />
       </section>
 
-      <section id="missions" className="section" aria-labelledby="missions-title">
-        <div className="wrap missions-pin">
-          <div className="sec-head">
-            <span className="label eyebrow">Missions · {missions.length} available</span>
-            <h2 id="missions-title" className="display">Missions</h2>
+      <section id="about" className="section wrap" aria-labelledby="about-title">
+        <SecHead id="about-title" eyebrow="01 · Player stats" title="About" />
+        <div className="about-grid">
+          <div className="about-copy">
+            <p className="lead" data-reveal>{person.tagline}</p>
+            {person.about.map((p) => <p key={p} data-reveal>{p}</p>)}
+            <m.a className="btn" href="#about" data-reveal {...press} onClick={(e) => { e.preventDefault(); go('about') }}>Full profile <Arrow /></m.a>
           </div>
+          <ul className="stats" aria-label="Skill areas">
+            {aboutStats.map((s) => (
+              <li key={s.label} className="stat" data-reveal>
+                <span className="stat-label">{s.label}</span>
+                <span className="stat-bar" aria-hidden="true">
+                  <span className="stat-fill" style={{ '--v': String((s.value ?? 0) / 10) } as CSSProperties} />
+                </span>
+                <span className="stat-val tnum">{s.value == null ? <span className="chip todo">TODO</span> : `${s.value}/10`}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section id="projects" className="section" aria-labelledby="projects-title">
+        <div className="wrap missions-pin">
+          <SecHead id="projects-title" eyebrow={`02 · Missions · ${missions.length} available`} title="Projects" />
           <div className="missions-track">
             {missions.map((mi, i) => (
               <div key={mi.id} className={`mission-slot${mi.main ? ' main' : ''}`}>
@@ -208,42 +282,61 @@ export function Landing({ go, introDone }: { go: (r: Route) => void; introDone: 
         </div>
       </section>
 
-      <section id="story" className="section" aria-labelledby="story-title">
-        <div className="wrap">
-          <div className="sec-head">
-            <span className="label eyebrow">Story so far</span>
-            <h2 id="story-title" className="display">The route</h2>
-          </div>
-          <div className="metro panel">
-            <svg className="line" viewBox="0 0 56 1000" preserveAspectRatio="none" aria-hidden="true">
-              <path d="M28 0 V1000" stroke="rgb(243 236 220 / 0.14)" strokeWidth="6" fill="none" />
-              <path className="route" d="M28 0 V1000" stroke="#45e3c6" strokeWidth="6" fill="none" />
-            </svg>
-            <ol className="stops">
-              {story.map((s, i) => (
-                <li key={i} className="stop">
+      <section id="experience" className="section wrap" aria-labelledby="experience-title">
+        <SecHead id="experience-title" eyebrow="03 · Story so far" title="Experience" />
+        <div className="timeline">
+          <span className="timeline-line" aria-hidden="true" />
+          <ol>
+            {story.map((s, i) => (
+              <li key={i} className={`tl-entry ${i % 2 ? 'right' : 'left'}`}>
+                <span className="tl-dot" aria-hidden="true" />
+                <div className="tl-card">
                   <span className="label when">{s.when ?? 'TODO · dates'}{s.now ? ' · Now' : ''}</span>
                   <h3>{s.title ?? <Todo>job title</Todo>}</h3>
                   <span className="where">{s.where}</span>
                   {s.body ? <p>{s.body}</p> : <Todo>what you built here</Todo>}
-                </li>
-              ))}
-            </ol>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section id="skills" className="section wrap" aria-labelledby="skills-title">
+        <SecHead id="skills-title" eyebrow="04 · Loadout" title="Skills" />
+        <div className="orbit">
+          <span className="orbit-core display" aria-hidden="true">vd</span>
+          <ul className="orbit-groups">
+            {orbit.map((g) => (
+              <li key={g.name} className="orbit-group">
+                <h3 className="orbit-cat" style={{ left: `${g.cat.x}%`, top: `${g.cat.y}%` }}>{g.name}</h3>
+                <ul>
+                  {g.items.map((it) => (
+                    <li key={it.name} className={`skill g${g.gi}`} style={{ left: `${it.x}%`, top: `${it.y}%` }}>
+                      <span className="skill-icon" aria-hidden="true">{monogram(it.name)}</span>
+                      <span className="skill-name">{it.name}</span>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section id="contact" className="section wrap contact-sec" aria-labelledby="contact-title">
+        <div className="contact-copy">
+          <SecHead id="contact-title" eyebrow="05 · New mission available" title="Hire vd" />
+          <p className="lead" data-reveal>Forward Deployed and Solutions Engineering roles, and full-stack AI work. The fastest way to reach me is LinkedIn or email.</p>
+          <div className="cta-row" data-reveal>
+            <m.a className="btn primary" href={person.linkedin} target="_blank" rel="noreferrer" {...press}>Message on LinkedIn <Arrow /></m.a>
+            <m.a className="btn" href={person.github} target="_blank" rel="noreferrer" {...press}>GitHub</m.a>
           </div>
         </div>
+        <ContactPhone className="contact-phone" />
       </section>
 
-      <section id="finale" className="finale wrap" aria-labelledby="finale-title">
-        <span className="label" style={{ color: 'var(--signal)' }}>New mission available</span>
-        <h2 id="finale-title" className="display">Hire <span className="hot">vd</span> for your next deployment</h2>
-        <div className="cta-row">
-          <m.a className="btn primary" href={person.linkedin} target="_blank" rel="noreferrer" {...press}>Message on LinkedIn <Arrow /></m.a>
-          <m.a className="btn" href={person.github} target="_blank" rel="noreferrer" {...press}>GitHub</m.a>
-          <m.a className="btn" href="#about" {...press} onClick={(e) => { e.preventDefault(); go('about') }}>Full profile</m.a>
-        </div>
-        <p className="label" style={{ marginTop: 20 }}>Email · <span style={{ userSelect: 'all', color: 'var(--paper)' }}>{person.email}</span></p>
-      </section>
-
+      <Minimap active={active} onGo={(id) => scrollToEl(`#${id}`)} />
       <AnimatePresence>{open && <Briefing key={open.id} mission={open} onClose={() => setOpen(null)} />}</AnimatePresence>
     </main>
   )

@@ -124,3 +124,24 @@ export const hudStats: HudStat[] = [
 
 /** Self-rated skill level out of 5 for the HUD stars. `null` until Vaibhav sets it. */
 export const skillLevel: number | null = null
+
+/** About-section stat bars, 0–10. Areas come from real work; levels are Vaibhav's call, so `null` = TODO. */
+export type Stat = { label: string; value: number | null }
+export const aboutStats: Stat[] = [
+  { label: 'AI and LLM apps', value: null },
+  { label: 'Computer vision', value: null },
+  { label: 'Full-stack web', value: null },
+  { label: 'Embedded and hardware', value: null },
+  { label: 'Working with customers', value: null },
+]
+
+/** Home page sections, in order. The minimap and bottom nav are built from this list. */
+export const sections = [
+  { id: 'hero', label: 'Home', short: 'Home' },
+  { id: 'about', label: 'About', short: 'About' },
+  { id: 'projects', label: 'Projects', short: 'Work' },
+  { id: 'experience', label: 'Experience', short: 'Career' },
+  { id: 'skills', label: 'Skills', short: 'Skills' },
+  { id: 'contact', label: 'Contact', short: 'Contact' },
+] as const
+export type SectionId = (typeof sections)[number]['id']

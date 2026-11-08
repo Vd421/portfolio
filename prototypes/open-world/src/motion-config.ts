@@ -77,9 +77,29 @@ export const time = {
   counterHold: 2.4,     // HUD counter: seconds on each stat
   counterTick: 0.9,     // HUD counter: tick-up duration
   starStagger: 0.12,
+  headingReveal: 0.5,   // section heading: opacity + rise
+  barFill: 0.6,         // About stat bars
+  barStagger: 0.08,
+  timelineGrow: 0.9,    // Experience line
+  skillPop: 0.35,       // Skills icons
+  skillStagger: 0.05,
+  phoneSlide: 0.6,      // Contact panel
+  blipPulse: 0.6,       // minimap blip on section enter
+  carTurn: 0.25,        // hypercar turntable, radians per second
+  glintEvery: 5,        // headlight glint period, seconds
 } as const
 
-export const distance = { nameRise: 24, childRise: 12, tipRise: 8, kenBurnsScale: 1.08 } as const
+export const distance = {
+  nameRise: 24, childRise: 12, tipRise: 8, kenBurnsScale: 1.08,
+  headingRise: 24,
+  timelineSlide: 32,     // Experience entries slide in from alternating sides
+  phoneRise: 120,        // Contact panel starts this far below
+  minimapRotate: 12,     // degrees, ± over the page
+  carDrive: 170,         // hero car drives this many % of its width out of frame
+} as const
+
+/** ScrollTrigger start for section entrances. */
+export const revealStart = 'top 75%'
 
 /** Write the tokens to CSS custom properties on <html>. Runs once, before the first render. */
 export function applyTokens(root: HTMLElement = document.documentElement) {

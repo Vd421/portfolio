@@ -69,7 +69,8 @@ export function startWorld(canvas2d: HTMLCanvasElement, canvas3d: HTMLCanvasElem
 
   loadFx().then(async (lib) => {
     fx = lib
-    if (!reduced) {
+    // Smooth scroll on desktop only; touch devices keep native scrolling.
+    if (!reduced && matchMedia('(min-width: 64rem) and (pointer: fine)').matches) {
       lenis = new lib.Lenis({ lerp: 0.09, wheelMultiplier: 0.9 })
       lenis.on('scroll', lib.ScrollTrigger.update)
       lib.gsap.ticker.add((time) => lenis?.raf(time * 1000))
@@ -183,7 +184,7 @@ export function scrollToEl(sel: string) {
   if (!el) return
   if (lenis) lenis.scrollTo(el, { offset: -72, duration: 1.4 })
   else el.scrollIntoView({ behavior: prefersReduced() ? 'auto' : 'smooth' })
-  const h = el.querySelector<HTMLElement>('h2')
+  const h = el.querySelector<HTMLElement>('h1, h2')
   if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }) }
 }
 

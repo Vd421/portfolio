@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ambient, clockFor, onWorld, prefersReduced, storage, world } from '../world'
-import { missions } from '../data'
 import { LottieIcon } from './LottieIcon'
 import { badgeAnim } from '../lottie'
 
@@ -28,34 +27,6 @@ export function TopBar({ route, go }: { route: Route; go: (r: Route) => void }) 
   )
 }
 
-/** Radar: a static SVG map; the sweep and your arrow are separate layers moved with transform only. */
-function Radar() {
-  const sweep = useRef<HTMLDivElement>(null)
-  const me = useRef<HTMLDivElement>(null)
-  useEffect(() => onWorld(() => {
-    if (sweep.current) sweep.current.style.transform = `rotate(${(world.t * 70) % 360}deg)`
-    if (me.current) me.current.style.transform = `translate(-50%, calc(-50% + ${((world.progress - 0.5) * -60).toFixed(1)}%)) rotate(${(world.progress * 40 - 20).toFixed(1)}deg)`
-  }), [])
-  return (
-    <div className="radar" role="img" aria-label={`Radar: ${missions.length} missions around your position`}>
-      <svg viewBox="0 0 128 128" aria-hidden="true">
-        <g stroke="rgb(243 236 220 / 0.14)" strokeWidth="5" fill="none">
-          <path d="M-10 84 L140 60" /><path d="M40 -10 L58 140" /><path d="M-10 30 Q60 50 140 20" />
-        </g>
-        <g stroke="rgb(243 236 220 / 0.18)" fill="none"><circle cx="64" cy="64" r="30" /><circle cx="64" cy="64" r="58" /></g>
-        {missions.map((m, i) => {
-          const a = (i / missions.length) * Math.PI * 2 - Math.PI / 2
-          const r = m.main ? 26 : 44
-          const x = 64 + Math.cos(a) * r, y = 64 + Math.sin(a) * r
-          return <rect key={m.id} x={x - 4} y={y - 4} width="8" height="8" fill={m.main ? '#ffb547' : '#ff5a2c'} transform={`rotate(45 ${x} ${y})`} />
-        })}
-      </svg>
-      <div className="radar-sweep" ref={sweep} aria-hidden="true" />
-      <div className="radar-me" ref={me} aria-hidden="true" />
-    </div>
-  )
-}
-
 export function BottomHud() {
   const [clock, setClock] = useState(clockFor(world.night))
   const [paused, setPaused] = useState(() => storage('local')?.getItem('ow:still') === '1')
@@ -67,7 +38,6 @@ export function BottomHud() {
   }), [])
   return (
     <div className="hud-bottom">
-      <Radar />
       <div className="hud-meta">
         <div className="clock"><span className="sr-only">In-game time </span>{clock}</div>
         {!reduced && (
