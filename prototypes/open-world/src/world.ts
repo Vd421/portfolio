@@ -14,6 +14,8 @@ export const world = {
   t: 0,
   progress: 0, // 0..1 page scroll, for the HUD
   mode: 'poster' as 'poster' | '2d' | '3d',
+  /** True while a full-screen overlay (the loading screen) hides the city: skip drawing. */
+  covered: false,
 }
 
 type Listener = () => void
@@ -129,7 +131,7 @@ function loop(lib: Fx, reduced: boolean) {
     const k = reduced ? 1 : 1 - Math.pow(0.0015, dt) // frame-rate independent easing
     world.night += (world.target.night - world.night) * k
     world.pan += (world.target.pan - world.pan) * k
-    if (document.hidden) return
+    if (document.hidden || (world.covered && !dirty)) return
     const changed = Math.abs(world.night - lastNight) > 0.0008 || Math.abs(world.pan - lastPan) > 0.0004
     if (animating || changed || dirty) {
       dirty = false

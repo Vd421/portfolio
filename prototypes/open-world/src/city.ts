@@ -8,6 +8,8 @@
 // at most one layer per frame. A frame is then a few gradients, three drawImage calls,
 // and a handful of moving details.
 
+import { sky } from './motion-config'
+
 export type CityState = { t: number; night: number; pan: number }
 
 type Building = { x: number; w: number; h: number; top: 0 | 1 | 2 | 3; antenna: number }
@@ -36,10 +38,7 @@ const hex = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3
 const mix = (a: RGB, b: RGB, k: number, alpha = 1) =>
   `rgba(${Math.round(lerp(a[0], b[0], k))},${Math.round(lerp(a[1], b[1], k))},${Math.round(lerp(a[2], b[2], k))},${alpha})`
 
-const SKY = {
-  dusk: [hex('#1a2440'), hex('#6e3550'), hex('#e0644a'), hex('#ffb35c')],
-  night: [hex('#03050a'), hex('#0a1124'), hex('#1d1a33'), hex('#3b2438')],
-}
+const SKY = { dusk: sky.dusk.map(hex), night: sky.night.map(hex) }
 const LAYER_DUSK = [hex('#5a3a52'), hex('#2e2236'), hex('#14131c')]
 const LAYER_NIGHT = [hex('#151b2c'), hex('#0d121e'), hex('#06090f')]
 
@@ -204,8 +203,8 @@ export class City {
       ctx.fillStyle = glow
       ctx.fillRect(0, 0, w, horizon)
       const disc = ctx.createLinearGradient(0, sunY - sunR, 0, sunY + sunR)
-      disc.addColorStop(0, '#fff3c9')
-      disc.addColorStop(1, '#ff7a35')
+      disc.addColorStop(0, sky.sun[0])
+      disc.addColorStop(1, sky.sun[1])
       ctx.globalAlpha = 1 - n
       ctx.fillStyle = disc
       ctx.beginPath(); ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2); ctx.fill()

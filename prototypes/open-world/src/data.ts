@@ -104,9 +104,23 @@ export const abilities = [
   { name: 'Hardware', items: ['Arduino', 'Ultrasonic sensors', 'Sensor fusion'] },
 ]
 
-export const tips = [
-  'Scroll to drive through the city. The night gets darker the further you go.',
-  'Replay records real sessions and flags the moment something broke.',
-  'Every project in this world is a mission. The orange marker is the main one.',
-  'The radar in the corner shows where you are on the page.',
+/** Loading-screen tips: real facts about Vaibhav only. Strings starting with TODO are skipped. */
+export const tips: string[] = [
+  'Vaibhav studied Electrical and Electronics Engineering at VIT Chennai, class of 2025.',
+  'He works at HCLTech on the MetLife account.',
+  'Replay records real user sessions and has AI flag the moment something broke.',
+  'His soccer tracker keeps every player’s ID stable through crossings and occlusions.',
+  'He builds hardware too: an obstacle-sensing walking aid and a fire-fighting robot.',
+  'He is based in Delhi, India.',
 ]
+
+/** Top-right HUD counter. `null` means unknown: it renders as a TODO placeholder, never a guess. */
+export type HudStat = { label: string; value: number | null; prefix?: string }
+export const hudStats: HudStat[] = [
+  { label: 'Years coding', value: null },
+  { label: 'Projects shipped', value: null },
+  { label: 'GitHub commits', value: null },
+]
+
+/** Self-rated skill level out of 5 for the HUD stars. `null` until Vaibhav sets it. */
+export const skillLevel: number | null = null

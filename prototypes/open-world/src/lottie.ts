@@ -2,19 +2,23 @@
 // Two hand-written Lottie animations (shape layers only, so the light player can draw them),
 // and a loader that pulls lottie_light from jsDelivr only when it is needed.
 
-const SODIUM = [1, 0.71, 0.28, 1]
-const EMBER = [1, 0.35, 0.17, 1]
-const PAPER = [0.95, 0.93, 0.86, 1]
+import { colors } from './motion-config'
+
+// Lottie wants colors as 0–1 RGBA arrays; derive them from the config.
+const rgba = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).concat(1)
+const SODIUM = rgba(colors.dusk)
+const EMBER = rgba(colors.pink)
+const PAPER = rgba(colors.hud)
 
 // Lottie keyframe helper: eased value change between two frames
-const kf = (t0: number, v0: number[], t1: number, v1: number[]) => ({
+const kf = (t0: number, v0: number[], t1: number, v1: number[]): { a: number; k: any[] } => ({
   a: 1,
   k: [
     { t: t0, s: v0, o: { x: [0.2], y: [0] }, i: { x: [0], y: [1] } },
     { t: t1, s: v1 },
   ],
 })
-const still = (v: number | number[]) => ({ a: 0, k: v })
+const still = (v: unknown) => ({ a: 0, k: v })
 const tr = { ty: 'tr', p: still([0, 0]), a: still([0, 0]), s: still([100, 100]), r: still(0), o: still(100) }
 
 /** Badge: a sodium slab wipes in, a light slash sweeps across it. 64×40, 1.5 s. */

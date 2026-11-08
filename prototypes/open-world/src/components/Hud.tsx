@@ -28,15 +28,6 @@ export function TopBar({ route, go }: { route: Route; go: (r: Route) => void }) 
   )
 }
 
-export function Objective({ text }: { text: string }) {
-  return (
-    <aside className="objective" aria-live="polite">
-      <span className="label">Objective</span>
-      {text}
-    </aside>
-  )
-}
-
 /** Radar: a static SVG map; the sweep and your arrow are separate layers moved with transform only. */
 function Radar() {
   const sweep = useRef<HTMLDivElement>(null)

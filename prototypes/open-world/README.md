@@ -5,12 +5,20 @@ landing page and a character-profile About page. Original art and type, not asse
 
 | Layer | Tool | Where |
 | --- | --- | --- |
-| Intro video | Remotion (`reel/`) | 8 s reel rendered to `site/intro.mp4`, poster `site/intro-poster.jpg` |
+| Loading screen | Remotion (`reel/`, `Poster`) | Text-free 3D city still → `src/assets/loading.{webp,jpg}` with a Ken Burns move, real-fact tips, ~3 s, skippable |
+| Intro reel | Remotion (`reel/`, `Intro`) | 8 s showcase video for LinkedIn (not used on the page) |
 | 3D hero | Three.js (`src/three-city.ts`) | Instanced towers, window and sky shaders, GPU traffic. Desktop only, loaded from jsDelivr after the intro |
 | 2D city | Canvas 2D (`src/city.ts`) | Phones, reduced motion and the fallback when 3D is slow |
 | Scroll | GSAP + ScrollTrigger + SplitText, Lenis | Pinned missions run, scrubbed titles, route line, night falling |
 | UI motion | Motion (`motion/react-m` + `LazyMotion`) | Page transitions, hover/tap, staggered reveals, mission briefing layout animation |
 | Icons | Lottie (`src/lottie.ts`) | Hand-written badge and mission ping, player loaded lazily |
+
+## Design tokens
+
+Every color, font, size, timing and ease lives in `src/motion-config.ts`. `applyTokens()` writes them to CSS
+custom properties before the first render; GSAP (via CustomEase), Motion, Lottie and both city renderers
+import the same object. Fonts are self-hosted (fontsource, Latin only) with metric-matched local fallbacks,
+so the font swap causes no layout shift.
 
 ## Performance rules
 
@@ -19,8 +27,8 @@ landing page and a character-profile About page. Original art and type, not asse
 - Animations change only `transform` and `opacity`.
 - `prefers-reduced-motion`: no intro, no 3D, no smooth scroll or pinning, no ambient motion; Motion
   swaps transforms for fades. The HUD's Motion button pauses ambient motion for everyone else.
-- Lighthouse (local, gzip): mobile 99 / 100 / 96, desktop 100 / 100 / 96 (performance / accessibility /
-  best practices). The 96 is a CDN request the test sandbox could not reach.
+- Lighthouse (local, gzip): mobile 100 / 100 / 96, desktop 100 / 100 / 96 (performance / accessibility /
+  best practices), CLS 0.001. The 96 is a CDN request the test sandbox could not reach.
 
 ## Build
 
@@ -29,7 +37,7 @@ pnpm install
 pnpm exec parcel build index.html --dist-dir dist --no-source-maps --public-url ./
 ```
 
-Copy `dist/*` plus `intro.mp4` and `intro-poster.jpg` into one folder and serve it. To re-render the reel:
+Serve `dist/` (the committed `site/` folder is the current build). To re-render the reel:
 
 ```bash
 cd reel && npm install

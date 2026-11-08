@@ -6,6 +6,8 @@ import { missions, person, story, type Mission } from '../data'
 import type { Route } from '../components/Hud'
 import { LottieIcon } from '../components/LottieIcon'
 import { pingAnim } from '../lottie'
+import { HudStats } from '../components/HudStats'
+import { distance, gsapEase, time } from '../motion-config'
 
 const Todo = ({ children }: { children: string }) => <span className="chip todo">TODO · {children}</span>
 const Arrow = () => (
@@ -38,8 +40,6 @@ function MissionBody({ m: mi, full }: { m: Mission; full?: boolean }) {
 /** Full-screen mission briefing: the card grows into it with a shared layout animation. */
 function Briefing({ mission, onClose }: { mission: Mission; onClose: () => void }) {
   const close = useRef<HTMLButtonElement>(null)
-  useEffect(() => { focusHeadingIfNavigated(root.current) }, [])
-
   useEffect(() => {
     lenisStop(true)
     close.current?.focus()
@@ -69,12 +69,18 @@ function Briefing({ mission, onClose }: { mission: Mission; onClose: () => void 
   )
 }
 
-export function Landing({ go, introDone, setObjective }: { go: (r: Route) => void; introDone: boolean; setObjective: (s: string) => void }) {
+export function Landing({ go, introDone }: { go: (r: Route) => void; introDone: boolean }) {
   const root = useRef<HTMLElement>(null)
   const [open, setOpen] = useState<Mission | null>(null)
+  // The HUD waits for the hero entrance; under reduced motion it is simply there.
+  const [hudIn, setHudIn] = useState(prefersReduced)
+
+  useEffect(() => { focusHeadingIfNavigated(root.current) }, [])
 
   useEffect(() => {
     if (!introDone) return
+    // Safety net (rule 5): the HUD shows even if the entrance never runs.
+    const hudFallback = window.setTimeout(() => setHudIn(true), 2500)
     const el = root.current!
     const reduced = prefersReduced()
     const wide = matchMedia('(min-width: 64rem)').matches
@@ -94,26 +100,16 @@ export function Landing({ go, introDone, setObjective }: { go: (r: Route) => voi
           world.target.pan = 0.16 + st.progress * 0.84
         },
       })
-      const objectives: [string, string][] = [
-        ['#hero', 'Scroll to drive into the city.'],
-        ['#missions', 'Pick a mission. Replay is the main one.'],
-        ['#story', 'Follow the line to see how vd got here.'],
-        ['#finale', 'Start a mission with vd.'],
-      ]
-      objectives.forEach(([sel, text]) =>
-        ScrollTrigger.create({ trigger: sel, start: 'top 55%', end: 'bottom 55%', onToggle: (s) => s.isActive && setObjective(text) }))
 
-      if (reduced) return
+      if (reduced) { setHudIn(true); return }
 
-      // Hero: name drops in after the cinematic, then lifts away as you drive off.
-      const split = new SplitText('.hero h1', { type: 'chars', aria: 'auto' })
+      // Hero entrance, once: name per word → underline draws → tagline, CTAs and HUD. ≤ 1.4 s.
+      const split = new SplitText('.hero-name', { type: 'words', aria: 'auto' })
       gsap.timeline()
-        .from(split.chars, { yPercent: 110, autoAlpha: 0, rotate: 6, stagger: 0.03, duration: 0.8, ease: 'expo.out' })
-        .from('.hero .kicker > *, .hero .lead, .hero .cta-row', { autoAlpha: 0, y: 12, stagger: 0.1, duration: 0.3, ease: 'power2.out' }, '-=0.5')
-      gsap.to('.hero-inner', {
-        yPercent: -30, scale: 0.92, autoAlpha: 0.25, ease: 'none',
-        scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true },
-      })
+        .from(split.words, { autoAlpha: 0, y: distance.nameRise, stagger: time.nameStagger, duration: time.nameRise, ease: gsapEase.out })
+        .fromTo('.name-bar', { scaleX: 0 }, { scaleX: 1, duration: time.underline, ease: gsapEase.underline }, '>-0.05')
+        .from('.hero-loc, .hero-tagline, .hero .cta-row', { autoAlpha: 0, y: distance.childRise, duration: 0.2, stagger: 0.04, ease: gsapEase.out }, '>-0.15')
+        .call(() => setHudIn(true), [], '<')
 
       // Section titles slam in with a skew, scrubbed to the scroll.
       gsap.utils.toArray<HTMLElement>('.sec-head h2').forEach((h) => {
@@ -164,28 +160,25 @@ export function Landing({ go, introDone, setObjective }: { go: (r: Route) => voi
     }, el)
     requestAnimationFrame(() => ScrollTrigger.refresh())
     })
-    return () => { cancelled = true; ctx?.revert(); document.documentElement.classList.remove('js-motion') }
-  }, [introDone, setObjective])
+    return () => { cancelled = true; clearTimeout(hudFallback); ctx?.revert(); document.documentElement.classList.remove('js-motion') }
+  }, [introDone])
 
   return (
     <main id="main" ref={root} tabIndex={-1}>
       <section id="hero" className="hero wrap" aria-labelledby="hero-title">
         <div className="hero-inner">
-          <div className="kicker">
-            <span className="chip sodium"><Pin /> {person.base}</span>
-            <span className="chip">{person.coords}</span>
-            <span className="chip signal">Player online</span>
-          </div>
-          <h1 id="hero-title" className="display">
-            <span className="row">{person.first}</span>
-            <span className="row outline">{person.last}</span>
+          <p className="label hero-loc"><Pin /> {person.base} · <span className="tnum">{person.coords}</span></p>
+          <h1 id="hero-title" className="display hero-name">
+            <span className="name-text">{person.first} {person.last}</span>
+            <span className="name-bar" aria-hidden="true" />
           </h1>
-          <p className="lead">{person.roles[0]}. {person.tagline}</p>
+          <p className="lead hero-tagline">{person.roles[0]}. {person.tagline}</p>
           <div className="cta-row">
             <m.a className="btn primary" href="#missions" {...press} onClick={(e) => { e.preventDefault(); scrollToEl('#missions') }}>Start main mission <Arrow /></m.a>
             <m.a className="btn" href="#about" {...press} onClick={(e) => { e.preventDefault(); go('about') }}>View profile</m.a>
           </div>
         </div>
+        <HudStats entered={hudIn} />
       </section>
 
       <section id="missions" className="section" aria-labelledby="missions-title">

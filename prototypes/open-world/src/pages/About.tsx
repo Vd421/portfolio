@@ -41,7 +41,7 @@ function Portrait() {
   )
 }
 
-export function About({ setObjective }: { setObjective: (s: string) => void }) {
+export function About() {
   const root = useRef<HTMLElement>(null)
   const [copied, setCopied] = useState(false)
 
@@ -50,7 +50,6 @@ export function About({ setObjective }: { setObjective: (s: string) => void }) {
   useEffect(() => {
     const el = root.current!
     world.target.night = 0.7
-    setObjective('Read the profile, then get in touch.')
     if (prefersReduced()) return
     let ctx: { revert: () => void } | null = null
     let cancelled = false
@@ -79,7 +78,7 @@ export function About({ setObjective }: { setObjective: (s: string) => void }) {
     requestAnimationFrame(() => ScrollTrigger.refresh())
     })
     return () => { cancelled = true; ctx?.revert() }
-  }, [setObjective])
+  }, [])
 
   const copy = async () => {
     try { await navigator.clipboard.writeText(person.email); setCopied(true); setTimeout(() => setCopied(false), 2000) }

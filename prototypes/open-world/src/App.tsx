@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, LazyMotion, MotionConfig, type Variants } from 'motion/react'
 import * as m from 'motion/react-m'
 import { nav, prefersReduced, refreshScroll, scrollToTop, startWorld, storage, upgradeTo3D, world } from './world'
-import { Intro } from './components/Intro'
-import { BottomHud, Objective, TopBar, type Route } from './components/Hud'
+import { LoadingScreen } from './components/LoadingScreen'
+import { BottomHud, TopBar, type Route } from './components/Hud'
 import { Landing } from './pages/Landing'
 import { About } from './pages/About'
 
@@ -26,20 +26,19 @@ export default function App() {
   const [wipeLabel, setWipeLabel] = useState('The city')
   const pending = useRef<() => void>(() => {})
   const [route, setRoute] = useState<Route>(routeFromHash)
-  const [objective, setObjective] = useState('Scroll to drive into the city.')
-  const [showIntro, setShowIntro] = useState(() => {
-    if (prefersReduced() || routeFromHash() !== 'home') return false
-    return storage('session')?.getItem('ow:intro') !== 'seen'
-  })
+  // Loading screen: first visit per session only, never under reduced motion.
+  const [showIntro, setShowIntro] = useState(() => !prefersReduced() && storage('session')?.getItem('ow:loaded') !== '1')
   const [introDone, setIntroDone] = useState(!showIntro)
   const busy = useRef(false)
 
   useEffect(() => { if (canvas.current && canvas3d.current) startWorld(canvas.current, canvas3d.current) }, [])
   useEffect(() => { document.title = TITLES[route] }, [route])
+  // Don't draw the city behind the loading screen; one frame is kept ready for the fade.
+  useEffect(() => { world.covered = showIntro }, [showIntro])
   useEffect(() => { if (introDone) upgradeTo3D() }, [introDone])
 
   const endIntro = useCallback(() => {
-    try { storage('session')?.setItem('ow:intro', 'seen') } catch { /* private mode */ }
+    try { storage('session')?.setItem('ow:loaded', '1') } catch { /* private mode */ }
     setShowIntro(false)
     setIntroDone(true)
   }, [])
@@ -87,7 +86,6 @@ export default function App() {
         <div className="grain" aria-hidden="true" />
 
         <TopBar route={route} go={go} />
-        <Objective text={objective} />
 
         <AnimatePresence mode="wait" initial={false}>
           <m.div
@@ -97,8 +95,8 @@ export default function App() {
             exit={{ opacity: 0, y: -12, transition: { duration: 0.15, ease: EASE } }}
           >
             {route === 'home'
-              ? <Landing go={go} introDone={introDone} setObjective={setObjective} />
-              : <About setObjective={setObjective} />}
+              ? <Landing go={go} introDone={introDone} />
+              : <About />}
           </m.div>
         </AnimatePresence>
 
@@ -112,7 +110,7 @@ export default function App() {
           </m.div>
         </div>
 
-        <AnimatePresence>{showIntro && <Intro key="intro" onDone={endIntro} />}</AnimatePresence>
+        <AnimatePresence>{showIntro && <LoadingScreen key="loading" onDone={endIntro} />}</AnimatePresence>
       </MotionConfig>
     </LazyMotion>
   )

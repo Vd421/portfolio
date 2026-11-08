@@ -4,6 +4,8 @@
 // Three.js is passed in, so the page can lazy-load it from the CDN and the Remotion reel can
 // import it from npm. Four draw calls per frame.
 
+import { sky } from './motion-config'
+
 export type City3DState = { t: number; night: number; pan: number; px?: number; py?: number }
 
 const SKY_VERT = /* glsl */ `
@@ -14,11 +16,12 @@ void main() {
 }`
 const SKY_FRAG = /* glsl */ `
 uniform float uNight; uniform vec3 uSun; uniform float uTime;
+uniform vec3 uDuskTop; uniform vec3 uDuskMid; uniform vec3 uDuskLow;
 varying vec3 vDir;
 float hash(vec3 p){ return fract(sin(dot(p, vec3(12.9898,78.233,37.719))) * 43758.5453); }
 void main() {
   float y = clamp(vDir.y, -0.2, 1.0);
-  vec3 duskTop = vec3(0.10,0.14,0.25), duskMid = vec3(0.43,0.21,0.31), duskLow = vec3(1.0,0.62,0.33);
+  vec3 duskTop = uDuskTop, duskMid = uDuskMid, duskLow = uDuskLow;
   vec3 nightTop = vec3(0.01,0.02,0.04), nightMid = vec3(0.04,0.07,0.14), nightLow = vec3(0.20,0.12,0.20);
   vec3 top = mix(duskTop, nightTop, uNight), mid = mix(duskMid, nightMid, uNight), low = mix(duskLow, nightLow, uNight);
   vec3 col = mix(low, mid, smoothstep(0.0, 0.18, y));
@@ -110,6 +113,8 @@ export class City3D {
 
   constructor(private T: any, canvas: HTMLCanvasElement | OffscreenCanvas, opts: { dpr?: number; width?: number; height?: number; preserve?: boolean } = {}) {
     const THREE = T
+    // The raw sky shader writes its output unconverted, so pass config colors through as-is (no sRGB → linear).
+    const raw = (hex: string) => new THREE.Color().setStyle(hex, THREE.LinearSRGBColorSpace)
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', alpha: false, preserveDrawingBuffer: !!opts.preserve })
     this.renderer.setPixelRatio(opts.dpr ?? 1)
     this.scene = new THREE.Scene()
@@ -118,7 +123,8 @@ export class City3D {
     this.sky = new THREE.Mesh(
       new THREE.SphereGeometry(600, 32, 16),
       new THREE.ShaderMaterial({ vertexShader: SKY_VERT, fragmentShader: SKY_FRAG, side: THREE.BackSide, depthWrite: false,
-        uniforms: { uNight: { value: 0 }, uSun: { value: new THREE.Vector3(0.25, 0.06, -1) }, uTime: { value: 0 } } }),
+        uniforms: { uNight: { value: 0 }, uSun: { value: new THREE.Vector3(0.25, 0.06, -1) }, uTime: { value: 0 },
+          uDuskTop: { value: raw(sky.dusk[0]) }, uDuskMid: { value: raw(sky.dusk[2]) }, uDuskLow: { value: raw(sky.dusk[3]) } } }),
     )
     this.scene.add(this.sky)
 
