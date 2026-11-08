@@ -1,0 +1,941 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Token Stream Hero</title>
+<meta name="description" content="Hero demo for Vaibhav Dhir: a tagline that streams in like a model answer and seeds a constellation, plus a contact pill that splits into two actions.">
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@800&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+  /* Dark-only page by design: tokens are the same in every scheme. */
+  :root,
+  :root[data-theme="dark"] {
+    --bg: #0b0b0c;
+    --surface: #141416;
+    --fg: #f2efe9;
+    --fg-2: #9a958d;          /* 6.61:1 on --bg, 6.18:1 on --surface */
+    --ember: #ff8a3d;         /* 8.39:1 on --bg */
+    --hairline: rgba(242, 239, 233, 0.14);
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --gutter: clamp(16px, 6vw, 112px);
+    --pill-h: 48px;
+    --dock-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --display: "Inter Tight", Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #0b0b0c; --fg: #f2efe9; }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  * { margin: 0; }
+  html { background: var(--bg); color: var(--fg); -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font: 400 1rem/1.6 var(--sans);
+    min-height: 100svh;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  button, input { font: inherit; color: inherit; }
+  button { -webkit-tap-highlight-color: transparent; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  .js-only { display: none; }
+  .js .js-only { display: inline-flex; }
+
+  :focus-visible { outline: 2px solid var(--ember); outline-offset: 3px; }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    position: relative;
+    isolation: isolate;
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    padding: clamp(72px, 12vh, 144px) var(--gutter) calc(var(--pill-h) + 96px + env(safe-area-inset-bottom, 0px));
+  }
+  .hero::before { /* static vignette, never animated */
+    content: "";
+    position: absolute; inset: 0; z-index: -2; pointer-events: none;
+    background: radial-gradient(120% 90% at 78% 40%, rgba(255, 138, 61, 0.05), transparent 60%);
+  }
+  .sky {
+    position: absolute; inset: 0; z-index: -1;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  .copy { width: 100%; max-width: 660px; }
+
+  .status {
+    display: flex; align-items: flex-start; gap: 10px;
+    font: 400 0.75rem/1.5 var(--mono);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--fg-2);
+    margin-bottom: 32px;
+  }
+  .status .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex: none; margin-top: 5px;
+    background: var(--ember);
+    box-shadow: 0 0 0 3px rgba(255, 138, 61, 0.16);
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(3rem, 1.6rem + 6.6vw, 7.5rem);
+    line-height: 0.92;
+    letter-spacing: -0.04em;
+    text-wrap: balance;
+  }
+
+  .tagline-wrap { position: relative; margin-top: 32px; max-width: 30ch; }
+  .tagline {
+    font-size: clamp(1.25rem, 1.05rem + 0.9vw, 1.75rem);
+    line-height: 1.45;
+    letter-spacing: -0.012em;
+    text-wrap: pretty;
+  }
+  .tok {
+    display: inline-block;
+    border-radius: 4px;
+    transition-property: opacity, transform;
+    transition-duration: 200ms;
+    transition-timing-function: var(--ease-out);
+  }
+  /* Hidden token state exists only after JS has confirmed it runs (.streaming is added by script). */
+  .streaming .tok {
+    opacity: 0;
+    transform: translateY(8px);
+    animation: tok-failsafe 0s linear 4s forwards; /* CSS failsafe if the script dies mid-stream */
+  }
+  .streaming .tok.on { opacity: 1; transform: none; }
+  @keyframes tok-failsafe { to { opacity: 1; transform: none; } }
+
+  .tagline.dimmed .tok { opacity: 0.6; transition-duration: 150ms; }
+  .tagline.dimmed .tok.near,
+  .tagline.dimmed .tok.lit { opacity: 1; }
+  .tok.lit { color: var(--ember); }
+  .tok:focus-visible { outline-offset: 2px; }
+
+  .caret {
+    position: absolute; left: 0; top: 0;
+    width: 2px; height: 1.1em;
+    margin-top: 0.18em;
+    background: var(--ember);
+    pointer-events: none;
+    opacity: 0;
+    font-size: clamp(1.25rem, 1.05rem + 0.9vw, 1.75rem);
+  }
+  .caret.live { opacity: 1; animation: blink 1s steps(1, end) infinite; }
+  .caret.done { opacity: 0; transition: opacity 150ms ease-out; animation: none; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .hint {
+    display: none;
+    margin-top: 12px;
+    font: 400 0.75rem/1.5 var(--mono);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--fg-2);
+    opacity: 0;
+    transition: opacity 150ms ease-out;
+  }
+  .js .hint { display: block; }
+  .tagline-wrap:focus-within .hint { opacity: 1; }
+
+  .contact {
+    display: flex; align-items: center; flex-wrap: wrap;
+    column-gap: 12px; row-gap: 4px;
+    margin-top: 28px;
+  }
+  .contact .label {
+    font: 400 0.75rem/1.5 var(--mono);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--fg-2);
+  }
+  .addr {
+    display: inline-flex; align-items: center; min-height: 44px;
+    font-weight: 500;
+    text-decoration: underline;
+    text-decoration-color: var(--hairline);
+    text-underline-offset: 5px;
+    text-decoration-thickness: 1px;
+    overflow-wrap: anywhere;
+  }
+  @media (hover: hover) { .addr:hover { text-decoration-color: var(--ember); } }
+  .chip {
+    align-items: center; justify-content: center;
+    min-height: 44px; padding: 0 16px;
+    border-radius: 999px;
+    border: 1px solid var(--hairline);
+    background: transparent;
+    font: 400 0.75rem/1 var(--mono);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--fg);
+    cursor: pointer;
+    transition: scale 150ms ease-out;
+  }
+  @media (hover: hover) { .chip:hover { border-color: rgba(242, 239, 233, 0.32); } }
+
+  @media (max-width: 899px) {
+    /* Reserve a band under the copy for the constellation so it never sits behind text. */
+    .hero {
+      align-items: flex-start;
+      padding-top: clamp(56px, 10vh, 96px);
+      padding-bottom: calc(var(--pill-h) + 96px + clamp(170px, 26vh, 260px) + env(safe-area-inset-bottom, 0px));
+    }
+  }
+
+  /* JS off: a plain link stands in for the pill. */
+  .ctl.dock-static {
+    position: fixed; left: 50%; bottom: var(--dock-bottom); z-index: 20;
+    transform: translateX(-50%);
+  }
+  .js .dock-static { display: none; }
+
+  /* ---------- Split pill ---------- */
+  .talk { display: none; }
+  .js .talk {
+    position: fixed; left: 0; right: 0; bottom: var(--dock-bottom); z-index: 20;
+    display: flex; justify-content: center;
+    pointer-events: none;
+  }
+  .talk-inner { position: relative; height: var(--pill-h); }
+  .goo {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .ctl {
+    position: relative;
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    height: var(--pill-h);
+    padding: 0 22px;
+    border-radius: 999px;
+    border: 1px solid rgba(242, 239, 233, 0.16);
+    background: #070708;
+    color: var(--fg);
+    font-weight: 500; font-size: 0.9375rem; line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: scale 150ms ease-out;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pill { pointer-events: auto; }
+  .ember {
+    width: 8px; height: 8px; border-radius: 50%; flex: none;
+    background: var(--ember);
+    box-shadow: 0 0 0 3px rgba(255, 138, 61, 0.16), 0 0 12px rgba(255, 138, 61, 0.5);
+  }
+  .pill-in, .b-label { display: inline-flex; align-items: center; gap: 10px; }
+  .bubbles {
+    position: absolute; top: 0; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 14px;
+    width: max-content;
+    visibility: hidden;
+  }
+  .talk.show .bubbles { visibility: visible; }
+  .talk.open .bubble { pointer-events: auto; }
+  .talk.open.goo-on .pill { pointer-events: none; }
+  /* Focus is already on the pill while the bubbles pull back; show its ring once the shape is whole. */
+  .talk.merging .pill:focus-visible { outline-color: transparent; }
+  /* Once the canvas has drawn its first frame it owns the fills; until then the CSS fills stand in. */
+  .goo-on .ctl { background: transparent; border-color: transparent; }
+  .goo-on .bubble .b-label { opacity: 0; }
+
+  /* Reduced motion / no canvas: bubbles cross-fade in above the pill, no goo. */
+  .talk.rm .bubbles { top: auto; bottom: calc(100% + 10px); }
+  .talk.rm .bubble { opacity: 0; transition: opacity 150ms ease-out; }
+  .talk.rm.open .bubble { opacity: 1; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .ctl:not(:disabled):active,
+    .chip:not(:disabled):active,
+    .send:not(:disabled):active,
+    .x:not(:disabled):active { scale: 0.96; }
+  }
+
+  /* ---------- Ask panel ---------- */
+  .ask {
+    position: fixed; z-index: 21;
+    left: 50%;
+    bottom: calc(var(--dock-bottom) + var(--pill-h) + 14px);
+    width: min(380px, calc(100vw - 32px));
+    padding: 18px 18px 20px;
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow: 0 0 0 1px var(--hairline), 0 24px 48px -12px rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    transform: translate(-50%, 8px);
+    transition: opacity 150ms ease-out, transform 150ms ease-out;
+  }
+  .ask.in { opacity: 1; transform: translate(-50%, 0); transition-duration: 200ms; }
+  .rm-mode .ask { bottom: calc(var(--dock-bottom) + 2 * var(--pill-h) + 24px); transform: translate(-50%, 0); }
+  .ask[hidden] { display: none; }
+  .ask-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .ask h2 { font: 400 0.75rem/1.5 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-2); }
+  .x {
+    display: inline-grid; place-items: center;
+    width: 44px; height: 44px; margin: -10px -10px -10px 0;
+    border: 0; border-radius: 999px; background: transparent; cursor: pointer;
+    color: var(--fg-2);
+    transition: scale 150ms ease-out;
+  }
+  @media (hover: hover) { .x:hover { color: var(--fg); } }
+  .ask label { display: block; font-weight: 500; margin-bottom: 8px; }
+  .ask-row { display: flex; gap: 8px; }
+  .ask input {
+    flex: 1; min-width: 0; height: 44px;
+    padding: 0 14px;
+    font-size: 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(242, 239, 233, 0.34); /* 3:1+ boundary on --surface */
+    background: var(--bg);
+  }
+  .ask input::placeholder { color: var(--fg-2); opacity: 1; }
+  .ask input:focus-visible { outline-offset: 2px; }
+  .send {
+    height: 44px; padding: 0 16px; border: 0; border-radius: 12px;
+    background: var(--fg); color: var(--bg); font-weight: 500; cursor: pointer;
+    transition: scale 150ms ease-out;
+  }
+  .note { margin-top: 12px; font-size: 0.875rem; line-height: 1.5; color: var(--fg-2); }
+  .ask-status { margin-top: 8px; font-size: 0.875rem; line-height: 1.5; color: var(--fg); }
+  .ask-status:empty { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <section class="hero" id="hero" aria-labelledby="name">
+    <canvas class="sky" id="sky" aria-hidden="true"></canvas>
+    <div class="copy" id="copy">
+      <p class="status"><span class="dot" aria-hidden="true"></span><span>At HCLTech · Open to forward-deployed roles</span></p>
+      <h1 id="name">Vaibhav Dhir</h1>
+      <div class="tagline-wrap" id="tagline-wrap">
+        <p class="tagline" id="tagline"><span class="tok">I</span> <span class="tok">build</span> <span class="tok">AI</span> <span class="tok">systems</span> <span class="tok">that</span> <span class="tok">ship,</span> <span class="tok">then</span> <span class="tok">sit</span> <span class="tok">with</span> <span class="tok">the</span> <span class="tok">people</span> <span class="tok">using</span> <span class="tok">them</span> <span class="tok">until</span> <span class="tok">they</span> <span class="tok">work.</span></p>
+        <span class="caret" id="caret" aria-hidden="true"></span>
+        <p class="hint" id="hint">Use ← → to light up each word</p>
+      </div>
+      <div class="contact">
+        <span class="label">Email</span>
+        <a class="addr" id="addr" href="mailto:vaibhavdhir01@gmail.com">vaibhavdhir01@gmail.com</a>
+        <button class="chip js-only" id="copy-btn" type="button">Copy</button>
+        <span class="sr-only" role="status" id="copy-status"></span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<a class="ctl dock-static" href="mailto:vaibhavdhir01@gmail.com">Email me</a>
+
+<div class="talk" id="talk">
+  <div class="talk-inner" id="talk-inner">
+    <canvas class="goo" id="goo" aria-hidden="true"></canvas>
+    <button class="pill ctl" id="pill" type="button" aria-expanded="false" aria-controls="talk-menu">
+      <span class="pill-in" id="pill-in"><span class="ember" aria-hidden="true"></span>Let's talk</span>
+    </button>
+    <div class="bubbles" id="talk-menu">
+      <a class="bubble ctl" id="b-email" href="mailto:vaibhavdhir01@gmail.com"><span class="b-label">Email me</span></a>
+      <button class="bubble ctl" id="b-ask" type="button" aria-expanded="false" aria-controls="ask-panel"><span class="b-label">Ask my AI</span></button>
+    </div>
+  </div>
+</div>
+
+<section class="ask" id="ask-panel" role="dialog" aria-labelledby="ask-title" aria-describedby="ask-note" hidden>
+  <div class="ask-head">
+    <h2 id="ask-title">Ask my AI</h2>
+    <button class="x" id="ask-close" type="button" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9m0-9l-9 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>
+    </button>
+  </div>
+  <form class="ask-form" id="ask-form" novalidate>
+    <label for="ask-q">Your question</label>
+    <div class="ask-row">
+      <input id="ask-q" name="question" type="text" autocomplete="off" enterkeyhint="send" placeholder="What do you work on?">
+      <button class="send" type="submit">Ask</button>
+    </div>
+  </form>
+  <p class="note" id="ask-note">Coming soon: answers grounded in my resume.</p>
+  <p class="ask-status" id="ask-status" role="status"></p>
+</section>
+
+<script>
+(() => {
+  "use strict";
+  const root = document.documentElement;
+  root.classList.add("js");
+  const mqRM = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let RM = mqRM.matches;
+  const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smooth = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+  const now = () => performance.now();
+
+  /* =====================================================================
+     C4 Token Stream Constellation
+     ===================================================================== */
+  const hero = document.getElementById("hero");
+  const copyEl = document.getElementById("copy");
+  const tagline = document.getElementById("tagline");
+  const caret = document.getElementById("caret");
+  const sky = document.getElementById("sky");
+  const sctx = sky.getContext("2d");
+  const toks = Array.from(tagline.querySelectorAll(".tok"));
+  const N = toks.length;
+  const labels = toks.map((t) => t.textContent.replace(/[^\w']/g, ""));
+
+  // Deterministic layout so the constellation looks the same every visit.
+  function rng(seed) {
+    return () => {
+      seed |= 0; seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const rand = rng(421);
+  const unit = [];
+  {
+    let md = 0.42, fails = 0;
+    while (unit.length < N) {
+      const a = rand() * Math.PI * 2, r = Math.sqrt(rand());
+      const p = { x: Math.cos(a) * r, y: Math.sin(a) * r };
+      if (unit.every((q) => Math.hypot(q.x - p.x, q.y - p.y) > md)) { unit.push(p); fails = 0; }
+      else if (++fails > 300) { md *= 0.94; fails = 0; }
+    }
+    unit.sort((a, b) => a.x - b.x); // word order reads left to right across the cluster
+  }
+  const bends = unit.map(() => (rand() - 0.5) * 2); // curve of each flight
+  // Edges: nearest pairs first, within a distance, max 3 per dot.
+  const MAXD = 0.78;
+  const edges = [];
+  {
+    const pairs = [];
+    for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
+      const d = Math.hypot(unit[i].x - unit[j].x, unit[i].y - unit[j].y);
+      if (d < MAXD) pairs.push({ i, j, d });
+    }
+    pairs.sort((a, b) => a.d - b.d);
+    const deg = new Array(N).fill(0);
+    for (const p of pairs) {
+      if (deg[p.i] < 3 && deg[p.j] < 3) { edges.push(p); deg[p.i]++; deg[p.j]++; }
+    }
+  }
+  const nbrs = toks.map((_, i) => edges.filter((e) => e.i === i || e.j === i).map((e) => (e.i === i ? e.j : e.i)));
+
+  const FLIGHT = 1100, EDGE_FADE = 450;
+  const dots = toks.map(() => ({ t0: -1, fx: 0, fy: 0, landAt: Infinity }));
+  let cssW = 0, cssH = 0, dpr = 1, rest = [], dim = 1;
+  let hoverIdx = -1, running = false, streamDone = false;
+
+  function layoutSky() {
+    const hr = hero.getBoundingClientRect();
+    cssW = hr.width; cssH = hr.height;
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    sky.width = Math.round(cssW * dpr); sky.height = Math.round(cssH * dpr);
+    const cr = copyEl.getBoundingClientRect();
+    const tr = { l: cr.left - hr.left, r: cr.right - hr.left, t: cr.top - hr.top, b: cr.bottom - hr.top };
+    const pad = Math.max(16, cssW * 0.06);
+    let box;
+    dim = 1;
+    if (cssW >= 900 && cssW - tr.r - pad - 56 >= 240) {
+      const l = tr.r + 56, r = cssW - pad;
+      box = { l, r, t: cssH * 0.16, b: cssH * 0.8 };
+    } else {
+      const top = tr.b + 36, bot = cssH - 128;
+      if (bot - top >= 150) box = { l: pad, r: cssW - pad, t: top, b: bot };
+      else { box = { l: cssW * 0.42, r: cssW - 16, t: 24, b: Math.max(tr.t + 200, cssH * 0.45) }; dim = 0.45; }
+    }
+    const cx = (box.l + box.r) / 2, cy = (box.t + box.b) / 2;
+    const rx = Math.min(300, (box.r - box.l) / 2 * 0.86), ry = Math.min(270, (box.b - box.t) / 2 * 0.82);
+    rest = unit.map((p) => ({ x: cx + p.x * rx, y: cy + p.y * ry }));
+  }
+
+  // Pre-rendered glow sprites (canvas drawing, not CSS filters).
+  function sprite(rgb) {
+    const c = document.createElement("canvas"); c.width = c.height = 64;
+    const g = c.getContext("2d");
+    const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, `rgba(${rgb},0.9)`); gr.addColorStop(0.25, `rgba(${rgb},0.35)`); gr.addColorStop(1, `rgba(${rgb},0)`);
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    return c;
+  }
+  const glowW = sprite("242,239,233"), glowE = sprite("255,138,61");
+  const easeOut = (t) => 1 - Math.pow(1 - t, 4);
+
+  function dotPos(i, t) {
+    const d = dots[i], R = rest[i];
+    if (d.t0 < 0) return null;
+    const e = RM ? 1 : clamp01((t - d.t0) / FLIGHT);
+    if (e >= 1) return { x: R.x, y: R.y, e: 1 };
+    const k = easeOut(e);
+    const mx = (d.fx + R.x) / 2, my = (d.fy + R.y) / 2;
+    const dx = R.x - d.fx, dy = R.y - d.fy, len = Math.hypot(dx, dy) || 1;
+    const bx = mx + (-dy / len) * bends[i] * len * 0.22, by = my + (dx / len) * bends[i] * len * 0.22;
+    const u = 1 - k;
+    return { x: u * u * d.fx + 2 * u * k * bx + k * k * R.x, y: u * u * d.fy + 2 * u * k * by + k * k * R.y, e };
+  }
+
+  function draw() {
+    const t = now();
+    sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    sctx.clearRect(0, 0, cssW, cssH);
+    const pos = toks.map((_, i) => dotPos(i, t));
+    const lit = new Set();
+    if (hoverIdx >= 0) { lit.add(hoverIdx); nbrs[hoverIdx].forEach((n) => lit.add(n)); }
+
+    sctx.lineWidth = 1;
+    for (const ed of edges) {
+      const a = dots[ed.i], b = dots[ed.j];
+      const landed = Math.max(a.landAt, b.landAt);
+      if (!isFinite(landed)) continue;
+      const fade = RM ? 1 : clamp01((t - landed) / EDGE_FADE);
+      if (fade <= 0) continue;
+      const near = 1 - ed.d / MAXD;
+      const hot = hoverIdx >= 0 && (ed.i === hoverIdx || ed.j === hoverIdx);
+      const alpha = (hot ? 0.85 : 0.08 + 0.3 * near * near) * fade * dim;
+      sctx.strokeStyle = hot ? `rgba(255,138,61,${alpha})` : `rgba(242,239,233,${alpha})`;
+      sctx.beginPath();
+      sctx.moveTo(rest[ed.i].x, rest[ed.i].y);
+      sctx.lineTo(rest[ed.j].x, rest[ed.j].y);
+      sctx.stroke();
+    }
+
+    sctx.globalCompositeOperation = "lighter";
+    for (let i = 0; i < N; i++) {
+      const p = pos[i];
+      if (!p) continue;
+      const isHot = i === hoverIdx, isNear = lit.has(i) && !isHot;
+      if (p.e < 1) { // short trail behind a flying dot
+        const back = dotPos(i, t - 90);
+        if (back) {
+          const g = sctx.createLinearGradient(back.x, back.y, p.x, p.y);
+          g.addColorStop(0, "rgba(255,138,61,0)"); g.addColorStop(1, `rgba(255,138,61,${0.55 * (1 - p.e) * dim})`);
+          sctx.strokeStyle = g; sctx.lineWidth = 1.5;
+          sctx.beginPath(); sctx.moveTo(back.x, back.y); sctx.lineTo(p.x, p.y); sctx.stroke();
+          sctx.lineWidth = 1;
+        }
+      }
+      const flying = p.e < 1;
+      const gs = isHot ? 40 : isNear ? 26 : flying ? 22 : 16;
+      sctx.globalAlpha = (isHot ? 1 : isNear ? 0.8 : 0.45) * dim;
+      sctx.drawImage(isHot || isNear || flying ? glowE : glowW, p.x - gs / 2, p.y - gs / 2, gs, gs);
+      sctx.globalAlpha = (isHot || isNear ? 1 : 0.85) * dim;
+      sctx.fillStyle = isHot ? "#ff8a3d" : isNear ? "#ffd2b0" : "#f2efe9";
+      sctx.beginPath(); sctx.arc(p.x, p.y, isHot ? 3 : isNear ? 2.4 : 1.8, 0, Math.PI * 2); sctx.fill();
+    }
+    sctx.globalAlpha = 1;
+    sctx.globalCompositeOperation = "source-over";
+
+    if (lit.size) {
+      sctx.font = '400 11px "JetBrains Mono", ui-monospace, Menlo, monospace';
+      sctx.textBaseline = "middle";
+      for (const i of lit) {
+        const p = pos[i];
+        if (!p) continue;
+        const txt = labels[i].toUpperCase();
+        const w = sctx.measureText(txt).width;
+        const left = p.x + 10 + w > cssW - 8;
+        sctx.textAlign = left ? "right" : "left";
+        sctx.fillStyle = i === hoverIdx ? "rgba(255,138,61,1)" : "rgba(242,239,233,0.85)";
+        sctx.fillText(txt, p.x + (left ? -10 : 10), p.y - 10);
+      }
+    }
+
+    // Keep the loop only while something is in flight or fading in.
+    let busy = false;
+    for (const d of dots) {
+      if (d.t0 >= 0 && !RM && t < d.landAt + EDGE_FADE) busy = true;
+      if (d.t0 >= 0 && t >= d.t0 + FLIGHT && !isFinite(d.landAt)) d.landAt = d.t0 + FLIGHT;
+    }
+    if (!streamDone) busy = busy || !RM;
+    return busy;
+  }
+  function loop() {
+    if (draw()) requestAnimationFrame(loop);
+    else running = false;
+  }
+  function kickSky() { if (!running) { running = true; requestAnimationFrame(loop); } }
+  let pendingRender = false;
+  function renderSky() {
+    if (running || pendingRender) return;
+    pendingRender = true;
+    requestAnimationFrame(() => { pendingRender = false; if (!running) draw(); });
+  }
+
+  // ----- streaming -----
+  const failsafe = setTimeout(() => finishStream(true), 4000);
+  let timer = 0;
+  function launch(i) {
+    const tr = toks[i].getBoundingClientRect(), hr = hero.getBoundingClientRect();
+    const d = dots[i];
+    d.fx = tr.left - hr.left + tr.width / 2; d.fy = tr.top - hr.top + tr.height / 2;
+    d.t0 = now();
+    d.landAt = RM ? d.t0 : d.t0 + FLIGHT;
+  }
+  function placeCaret(i) {
+    const t = toks[i];
+    const x = t.offsetLeft + t.offsetWidth + 3, y = t.offsetTop;
+    caret.style.transform = `translate(${x}px, ${y}px)`;
+  }
+  function finishStream(force) {
+    if (streamDone) return;
+    clearTimeout(failsafe); clearTimeout(timer);
+    for (let i = 0; i < N; i++) {
+      toks[i].classList.add("on");
+      if (dots[i].t0 < 0) { launch(i); if (force) { dots[i].t0 = now() - FLIGHT; dots[i].landAt = now(); } }
+    }
+    streamDone = true;
+    tagline.classList.remove("streaming");
+    caret.classList.remove("live");
+    caret.classList.add("done");
+    kickSky();
+  }
+  function startStream() {
+    if (RM) {
+      // Full text at once, constellation drawn statically.
+      for (let i = 0; i < N; i++) launch(i);
+      streamDone = true; clearTimeout(failsafe);
+      renderSky();
+      return;
+    }
+    tagline.classList.add("streaming");
+    caret.classList.add("live");
+    caret.style.transform = `translate(${toks[0].offsetLeft}px, ${toks[0].offsetTop}px)`;
+    let i = 0;
+    const step = () => {
+      if (streamDone) return;
+      toks[i].classList.add("on");
+      placeCaret(i);
+      launch(i);
+      kickSky();
+      const w = toks[i].textContent;
+      i++;
+      if (i >= N) { timer = setTimeout(() => finishStream(false), 320); return; }
+      let delay = 45 + Math.random() * 25;
+      if (/[,;:]$/.test(w)) delay += 210;
+      if (/[.!?]$/.test(w)) delay += 320;
+      timer = setTimeout(step, delay);
+    };
+    timer = setTimeout(step, 420);
+  }
+
+  // ----- hover / keyboard on words -----
+  function setHover(i) {
+    hoverIdx = i;
+    toks.forEach((t, j) => {
+      t.classList.toggle("lit", j === i);
+      t.classList.toggle("near", i >= 0 && nbrs[i].includes(j));
+    });
+    tagline.classList.toggle("dimmed", i >= 0 && streamDone);
+    renderSky();
+  }
+  toks.forEach((t, i) => {
+    t.tabIndex = i === 0 ? 0 : -1;
+    t.setAttribute("aria-describedby", "hint");
+    t.addEventListener("pointerenter", () => setHover(i));
+    t.addEventListener("pointerleave", () => { if (document.activeElement !== t) setHover(-1); });
+    t.addEventListener("focus", () => {
+      toks.forEach((o, j) => (o.tabIndex = j === i ? 0 : -1));
+      setHover(i);
+    });
+    t.addEventListener("blur", () => setTimeout(() => { if (!tagline.contains(document.activeElement)) setHover(-1); }, 0));
+    t.addEventListener("keydown", (e) => {
+      let n = -1;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") n = Math.min(N - 1, i + 1);
+      else if (e.key === "ArrowLeft" || e.key === "ArrowUp") n = Math.max(0, i - 1);
+      else if (e.key === "Home") n = 0;
+      else if (e.key === "End") n = N - 1;
+      if (n >= 0) { e.preventDefault(); toks[n].focus(); }
+    });
+  });
+
+  layoutSky();
+  startStream();
+  if (!RM) kickSky();
+  new ResizeObserver(() => { layoutSky(); if (running) return; draw(); }).observe(hero);
+
+  // ----- copy address -----
+  const copyBtn = document.getElementById("copy-btn");
+  const copyStatus = document.getElementById("copy-status");
+  const addr = "vaibhavdhir01@gmail.com";
+  let copyTimer = 0;
+  copyBtn.addEventListener("click", async () => {
+    let ok = false;
+    try { await navigator.clipboard.writeText(addr); ok = true; } catch (_) {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = addr; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select(); ok = document.execCommand("copy"); ta.remove();
+      } catch (_) { ok = false; }
+    }
+    if (!ok) {
+      const r = document.createRange(); r.selectNodeContents(document.getElementById("addr"));
+      const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    }
+    copyBtn.textContent = ok ? "Copied" : "Selected";
+    copyStatus.textContent = ok ? "Email address copied" : "Address selected. Press Ctrl+C or Cmd+C to copy it.";
+    clearTimeout(copyTimer);
+    copyTimer = setTimeout(() => { copyBtn.textContent = "Copy"; copyStatus.textContent = ""; }, 2400);
+  });
+
+  /* =====================================================================
+     A5 Split Pill
+     ===================================================================== */
+  const talk = document.getElementById("talk");
+  const pill = document.getElementById("pill");
+  const pillIn = document.getElementById("pill-in");
+  const bE = document.getElementById("b-email");
+  const bA = document.getElementById("b-ask");
+  const lE = bE.firstElementChild, lA = bA.firstElementChild;
+  const panel = document.getElementById("ask-panel");
+  const askClose = document.getElementById("ask-close");
+  const askForm = document.getElementById("ask-form");
+  const askInput = document.getElementById("ask-q");
+  const askStatus = document.getElementById("ask-status");
+  const gooC = document.getElementById("goo");
+  const gctx = gooC.getContext("2d");
+  const GAP = 14;
+
+  let gooOK = !!gctx && !RM;
+  let open = false, panelOpen = false;
+  let gW = 0, gH = 0, gd = 1, img = null, px32 = null, pw = 0, ph = 0;
+  let pillW = 0, wE = 0, wA = 0, cE = 0, cA = 0, H2 = 24;
+  const spring = { x: 0, v: 0, target: 0, k: 170, c: 17 };
+  const press = [0, 1, 2].map(() => ({ from: 1, to: 1, t0: 0, v: 1 }));
+  let gooRunning = false;
+
+  function measure() {
+    pillW = pill.offsetWidth; wE = bE.offsetWidth; wA = bA.offsetWidth;
+    H2 = pill.offsetHeight / 2;
+    const rowW = wE + GAP + wA;
+    cE = -rowW / 2 + wE / 2; cA = rowW / 2 - wA / 2;
+  }
+  function gooResize() {
+    measure();
+    gW = Math.min(Math.ceil(wE + wA + GAP + 120), window.innerWidth);
+    gH = pill.offsetHeight + 56;
+    gd = Math.min(2, window.devicePixelRatio || 1);
+    pw = Math.round(gW * gd); ph = Math.round(gH * gd);
+    gooC.width = pw; gooC.height = ph;
+    gooC.style.width = gW + "px"; gooC.style.height = gH + "px";
+    img = gctx.createImageData(pw, ph);
+    px32 = new Uint32Array(img.data.buffer);
+  }
+  function pressVal(p, t) {
+    const e = clamp01((t - p.t0) / 150);
+    p.v = p.from + (p.to - p.from) * (1 - (1 - e) * (1 - e)); // ease-out
+    return e < 1;
+  }
+
+  // Per-pixel smooth-min metaballs of two capsules, alpha-thresholded with 1px anti-aliasing.
+  function drawGoo(p) {
+    const pp = Math.max(p, 0), und = Math.max(-p, 0);
+    const s = smooth(0, 0.7, pp);
+    const bump = Math.sin(Math.PI * clamp01(pp));
+    const k = 20 * smooth(0, 0.22, pp) * (1 - smooth(0.6, 0.97, pp)) + 0.0001;
+    const f0 = press[0].v, f1 = press[1].v, f2 = press[2].v;
+    const fa = lerp(f0, f1, s), fb = lerp(f0, f2, s);
+    const wob = 1 + und * 0.45, wobR = 1 - und * 0.3;
+    const cx = gW / 2, cy = gH / 2;
+    const A = { x: cx + cE * pp, hw: lerp(pillW / 2, wE / 2, s) * (1 - 0.1 * bump) * fa * wob, r: H2 * (1 - 0.1 * bump) * fa * wobR };
+    const B = { x: cx + cA * pp, hw: lerp(pillW / 2, wA / 2, s) * (1 - 0.1 * bump) * fb * wob, r: H2 * (1 - 0.1 * bump) * fb * wobR };
+    A.s = Math.max(0, A.hw - A.r); B.s = Math.max(0, B.hw - B.r);
+    px32.fill(0);
+    const x0 = Math.max(0, Math.floor((Math.min(A.x - A.hw, B.x - B.hw) - k - 2) * gd));
+    const x1 = Math.min(pw, Math.ceil((Math.max(A.x + A.hw, B.x + B.hw) + k + 2) * gd));
+    const rMax = Math.max(A.r, B.r);
+    const y0 = Math.max(0, Math.floor((cy - rMax - k - 2) * gd));
+    const y1 = Math.min(ph, Math.ceil((cy + rMax + k + 2) * gd));
+    const inv = 1 / gd, top = cy - rMax, span = 2 * rMax;
+    for (let y = y0; y < y1; y++) {
+      const fy = (y + 0.5) * inv, dy = fy - cy, dy2 = dy * dy;
+      const ty = clamp01((fy - top) / span);
+      // fill: soft top-lit black
+      const base = 30 - 23 * ty; // ~#1e1e21 -> #070708
+      const rimK = 0.26 - 0.18 * ty;
+      const row = y * pw;
+      for (let x = x0; x < x1; x++) {
+        const fx = (x + 0.5) * inv;
+        let ax = Math.abs(fx - A.x) - A.s; if (ax < 0) ax = 0;
+        let bx = Math.abs(fx - B.x) - B.s; if (bx < 0) bx = 0;
+        const da = Math.sqrt(ax * ax + dy2) - A.r;
+        const db = Math.sqrt(bx * bx + dy2) - B.r;
+        const h = Math.max(k - Math.abs(da - db), 0) / k;
+        const d = (da < db ? da : db) - h * h * k * 0.25;
+        const dd = d * gd;
+        let a = 0.5 - dd; if (a <= 0) continue; if (a > 1) a = 1;
+        let rim = 1 - Math.abs(dd + 1.1) / 1.1; if (rim < 0) rim = 0;
+        rim *= rimK;
+        const c = base + (242 - base) * rim;
+        const g = base + (239 - base) * rim;
+        const b2 = base + 1 + (233 - base) * rim;
+        px32[row + x] = ((a * 255) << 24) | ((b2 & 255) << 16) | ((g & 255) << 8) | (c & 255);
+      }
+    }
+    gctx.putImageData(img, 0, 0);
+
+    // DOM controls follow the same model with transform/opacity only.
+    bE.style.transform = `translateX(${(cE * (pp - 1)).toFixed(2)}px)`;
+    bA.style.transform = `translateX(${(cA * (pp - 1)).toFixed(2)}px)`;
+    pillIn.style.opacity = (1 - clamp01((pp - 0.08) * 4)).toFixed(3);
+    talk.classList.toggle("merging", !open && pp > 0.2);
+    const lo = clamp01((pp - 0.55) * 4).toFixed(3);
+    lE.style.opacity = lo; lA.style.opacity = lo;
+  }
+
+  let lastT = 0;
+  function gooFrame(t) {
+    let dt = Math.min(0.05, (t - lastT) / 1000 || 0.016); lastT = t;
+    const sub = 4, h = dt / sub;
+    for (let i = 0; i < sub; i++) {
+      const a = -spring.k * (spring.x - spring.target) - spring.c * spring.v;
+      spring.v += a * h; spring.x += spring.v * h;
+    }
+    let busy = false;
+    for (const p of press) if (pressVal(p, t)) busy = true;
+    const settled = Math.abs(spring.x - spring.target) < 0.0015 && Math.abs(spring.v) < 0.01;
+    if (settled) { spring.x = spring.target; spring.v = 0; } else busy = true;
+    drawGoo(spring.x);
+    if (!open && settled) talk.classList.remove("show");
+    if (busy) requestAnimationFrame(gooFrame); else gooRunning = false;
+  }
+  function kickGoo() {
+    if (!gooOK) return;
+    if (!gooRunning) { gooRunning = true; lastT = now(); requestAnimationFrame(gooFrame); }
+  }
+
+  function setMode() {
+    gooOK = !!gctx && !RM;
+    talk.classList.toggle("rm", !gooOK);
+    root.classList.toggle("rm-mode", !gooOK);
+    talk.classList.toggle("goo-on", gooOK);
+    gooC.style.display = gooOK ? "" : "none";
+    [bE, bA].forEach((b) => (b.style.transform = ""));
+    [pillIn, lE, lA].forEach((l) => (l.style.opacity = ""));
+    pill.tabIndex = 0;
+    if (gooOK) {
+      gooResize();
+      spring.x = spring.target = open ? 1 : 0; spring.v = 0;
+      drawGoo(spring.x);
+      if (open) pill.tabIndex = -1;
+    }
+  }
+
+  function openMenu() {
+    if (open) return;
+    open = true;
+    talk.classList.add("open", "show");
+    pill.setAttribute("aria-expanded", "true");
+    if (gooOK) {
+      pill.tabIndex = -1;
+      Object.assign(spring, { target: 1, k: 190, c: 18 });
+      kickGoo();
+    }
+    bE.focus({ preventScroll: true });
+  }
+  function closeMenu(returnFocus) {
+    if (!open) return;
+    if (panelOpen) closePanel(false);
+    open = false;
+    talk.classList.remove("open");
+    if (!gooOK) talk.classList.remove("show");
+    pill.setAttribute("aria-expanded", "false");
+    pill.tabIndex = 0;
+    if (gooOK) { Object.assign(spring, { target: 0, k: 260, c: 11 }); kickGoo(); }
+    if (returnFocus) pill.focus({ preventScroll: true });
+  }
+
+  let panelTimer = 0;
+  function openPanel() {
+    if (panelOpen) return;
+    panelOpen = true;
+    clearTimeout(panelTimer);
+    panel.hidden = false;
+    bA.setAttribute("aria-expanded", "true");
+    void panel.offsetWidth;
+    panel.classList.add("in");
+    askInput.focus({ preventScroll: true });
+  }
+  function closePanel(returnFocus) {
+    if (!panelOpen) return;
+    panelOpen = false;
+    bA.setAttribute("aria-expanded", "false");
+    panel.classList.remove("in");
+    panelTimer = setTimeout(() => { panel.hidden = true; askStatus.textContent = ""; }, 160);
+    if (returnFocus) bA.focus({ preventScroll: true });
+  }
+
+  pill.addEventListener("click", () => (open ? closeMenu(true) : openMenu()));
+  bA.addEventListener("click", () => (panelOpen ? closePanel(true) : openPanel()));
+  askClose.addEventListener("click", () => closePanel(true));
+  askForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    askStatus.textContent = "This isn't live yet, so nothing was sent. Email me in the meantime.";
+  });
+
+  // Press feedback mirrored into the canvas (DOM uses CSS scale 0.96 / 150 ms ease-out).
+  [pill, bE, bA].forEach((el, i) => {
+    const set = (to) => {
+      if (!gooOK) return;
+      const p = press[i]; pressVal(p, now());
+      p.from = p.v; p.to = to; p.t0 = now();
+      kickGoo();
+    };
+    el.addEventListener("pointerdown", () => set(0.96));
+    ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => el.addEventListener(ev, () => set(1)));
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (panelOpen) { e.preventDefault(); closePanel(true); }
+    else if (open) { e.preventDefault(); closeMenu(true); }
+  });
+  document.addEventListener("pointerdown", (e) => {
+    if (!open) return;
+    if (talk.contains(e.target) || panel.contains(e.target)) return;
+    const focusable = e.target.closest && e.target.closest("a[href],button,input,textarea,select,[tabindex]");
+    closeMenu(false);
+    if (!focusable) setTimeout(() => pill.focus({ preventScroll: true }), 0);
+  });
+  // Tabbing away closes the menu without stealing focus.
+  const within = (el) => talk.contains(el) || panel.contains(el);
+  [talk, panel].forEach((el) => el.addEventListener("focusout", () => {
+    setTimeout(() => {
+      if (!open || !document.hasFocus()) return; // window blur keeps the menu as it was
+      const a = document.activeElement;
+      if (!a || !within(a)) closeMenu(false);
+    }, 0);
+  }));
+
+  let rz = 0;
+  window.addEventListener("resize", () => {
+    cancelAnimationFrame(rz);
+    rz = requestAnimationFrame(() => { if (gooOK) { gooResize(); drawGoo(spring.x); } });
+  });
+  mqRM.addEventListener("change", (e) => {
+    RM = e.matches;
+    if (RM) finishStream(true);
+    setMode();
+    renderSky();
+  });
+
+  const ready = () => { setMode(); if (gooOK) drawGoo(0); };
+  if (document.fonts && document.fonts.ready) {
+    ready();
+    document.fonts.ready.then(() => { if (gooOK) { gooResize(); drawGoo(spring.x); } layoutSky(); renderSky(); });
+  } else ready();
+})();
+</script>
+</body>
+</html>
