@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vaibhav Dhir — Work</title>
+<meta name="description" content="Scroll-story demo: Vaibhav Dhir's brief, projects, skills and experience.">
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@700;800&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* ------------------------------------------------------------------
+   Tokens. Dark-only by design (the brief fixes the look).
+   Contrast, measured (WCAG 2.x): text #f2efe9 on bg 17.14:1, on surface 15.89:1,
+   on surface-2 14.65:1; muted #a19d95 on bg 7.28:1, on surface 6.75:1, on
+   surface-2 6.22:1; ember #ff8a3d on bg 8.39:1; bg on ember (pill, tag) 8.39:1.
+   ------------------------------------------------------------------ */
+:root {
+  --bg: #0b0b0c;
+  --surface: #151517;
+  --surface-2: #1d1d20;
+  --text: #f2efe9;
+  --muted: #a19d95;
+  --hairline: rgb(242 239 233 / 0.12);
+  --ember: #ff8a3d;
+  --gutter: clamp(16px, 5vw, 72px);
+  --display: "Inter Tight", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --stack-top: 16px;
+  --stack-step: 8px;
+  color-scheme: dark;
+}
+@media (min-width: 768px) {
+  :root { --stack-top: clamp(24px, 9svh, 96px); --stack-step: 14px; }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 1.0625rem/1.6 var(--body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+h1, h2, h3, p, ul, ol { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--ember); outline-offset: 4px; border-radius: 6px; }
+.sr-only {
+  position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Lenis (from lenis@1.3.27/dist/lenis.css) */
+html.lenis, html.lenis body { height: auto; }
+.lenis:not(.lenis-autoToggle).lenis-stopped { overflow: clip; }
+.lenis.lenis-smooth iframe { pointer-events: none; }
+
+.label {
+  font: 400 0.8125rem/1.4 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.display {
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  text-wrap: balance;
+}
+
+/* Skip link + header */
+.skip {
+  position: absolute; left: 16px; top: 8px; z-index: 10;
+  padding: 12px 16px; border-radius: 999px;
+  background: var(--text); color: var(--bg); font-weight: 500; text-decoration: none;
+  transform: translateY(-200%);
+}
+.skip:focus-visible { transform: none; }
+.top {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 8px 24px;
+  padding: 16px var(--gutter);
+}
+.top h1 { font: 500 0.9375rem/1.4 var(--body); letter-spacing: -0.01em; }
+.top nav ul { display: flex; flex-wrap: wrap; gap: 0 4px; margin-inline: -12px; }
+.top nav a {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px;
+  font: 400 0.75rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); text-decoration: none;
+  transition: color 150ms ease-out;
+}
+@media (hover: hover) { .top nav a:hover { color: var(--text); } }
+
+section { scroll-margin-top: 0; }
+
+/* 1. About: the brief ------------------------------------------------ */
+.brief {
+  min-height: 100svh;
+  display: flex; align-items: center;
+  padding: 64px var(--gutter);
+}
+.brief__inner { width: 100%; max-width: 1240px; margin-inline: auto; }
+.brief__inner .label { margin-bottom: 32px; }
+.brief__text {
+  font-family: var(--display);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+  font-size: clamp(1.75rem, min(4.6vw, 7.4svh), 4.75rem);
+  text-wrap: pretty;
+  max-width: 24ch;
+}
+.brief__text .w { will-change: opacity; }
+/* The underline is a pseudo-element scaled by --u. Default 1 = fully drawn. */
+.hl { position: relative; white-space: nowrap; --u: 1; }
+.hl::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -0.06em;
+  height: 0.09em; border-radius: 0.05em; background: var(--ember);
+  transform: scaleX(var(--u)); transform-origin: left center;
+}
+
+/* 2. Projects: sticky card stack ------------------------------------ */
+.work { padding: 96px var(--gutter) 64px; }
+.section-head { max-width: 1240px; margin: 0 auto 40px; display: grid; gap: 12px; }
+.section-head .lede { font: 700 clamp(1.75rem, 4vw, 3rem)/1.05 var(--display); letter-spacing: -0.04em; text-wrap: balance; max-width: 22ch; }
+.stack { max-width: 1240px; margin-inline: auto; }
+.stack__item { margin-bottom: 10svh; }
+.stack__item:last-child { margin-bottom: 0; }
+@media (min-height: 560px) {
+  .stack__item { position: sticky; top: calc(var(--stack-top) + var(--i) * var(--stack-step)); }
+}
+.card {
+  position: relative;
+  display: grid; gap: 16px; align-content: start;
+  min-height: min(68svh, 560px);
+  padding: clamp(20px, 4vw, 56px);
+  border-radius: 28px;
+  background: var(--surface);
+  border: 1px solid transparent;
+  box-shadow: 0 0 0 1px var(--hairline), 0 24px 48px -24px rgb(0 0 0 / 0.6);
+  transform-origin: center top;
+}
+.card:focus-visible { border-radius: 28px; outline-offset: 6px; }
+.card__top { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.card__kicker { font: 400 0.8125rem/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.card__idx { font: 400 0.8125rem/1.4 var(--mono); letter-spacing: 0.08em; color: var(--ember); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.card__title { font: 800 clamp(2.25rem, 7vw, 6rem)/0.95 var(--display); letter-spacing: -0.04em; text-wrap: balance; margin-top: auto; padding-top: clamp(8px, 6svh, 72px); }
+.card__summary { max-width: 62ch; color: var(--muted); font-size: clamp(1rem, 1.3vw, 1.1875rem); text-wrap: pretty; }
+.card__shade {
+  position: absolute; inset: -1px; border-radius: inherit;
+  background: var(--bg); opacity: 0; pointer-events: none;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-flex; align-items: center; min-height: 28px; padding: 4px 12px;
+  border-radius: 999px; background: var(--surface-2);
+  font: 400 0.75rem/1.3 var(--mono); letter-spacing: 0.04em; color: var(--text);
+}
+
+/* 3. Skills: momentum lanes ----------------------------------------- */
+.skills { padding: 128px 0 112px; }
+.skills__title {
+  text-align: center; font-size: clamp(3rem, 12vw, 10rem);
+  padding-inline: var(--gutter); transform-origin: center 60%;
+}
+.skill-groups {
+  max-width: 1240px; margin: 56px auto 0; padding-inline: var(--gutter);
+  display: grid; gap: 32px 40px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+.skill-groups h3 { margin-bottom: 12px; }
+.chips--lg .chip { min-height: 40px; padding: 8px 16px; font: 500 0.9375rem/1.3 var(--body); letter-spacing: 0; background: var(--surface); box-shadow: 0 0 0 1px var(--hairline); border: 1px solid transparent; }
+.lanes {
+  margin-top: 56px; display: grid; gap: 16px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.lanes[hidden], .lanes-ctrl[hidden] { display: none; }
+.lane__track { display: flex; width: max-content; will-change: transform; }
+.lane__set { display: flex; gap: 16px; padding-right: 16px; }
+.lane .chip {
+  min-height: 0; padding: 0.55em 1.1em; white-space: nowrap;
+  font: 700 clamp(1.125rem, 2.4vw, 2rem)/1.1 var(--display); letter-spacing: -0.03em;
+  background: var(--surface); box-shadow: 0 0 0 1px var(--hairline); border: 1px solid transparent;
+}
+.lane:nth-child(2) .chip { background: transparent; color: var(--muted); }
+.lanes-ctrl { display: flex; justify-content: center; margin-top: 32px; padding-inline: var(--gutter); }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px;
+  border-radius: 999px; border: 1px solid transparent; cursor: pointer;
+  background: var(--surface-2); color: var(--text);
+  box-shadow: 0 0 0 1px var(--hairline);
+  font: 400 0.8125rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+  transition-property: transform, background-color; transition-duration: 150ms; transition-timing-function: ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn svg { width: 14px; height: 14px; flex: none; }
+@media (hover: hover) { .btn:hover { background: #26262a; } }
+.btn:not(:disabled):active, .pill:active { transform: scale(0.96); }
+
+/* 4. Experience: chapter word + run --------------------------------- */
+.exp { padding: 96px 0 64px; }
+.exp__stage { position: relative; }
+.exp__label { padding-inline: var(--gutter); max-width: calc(1240px + 2 * var(--gutter)); margin-inline: auto; }
+.chapter {
+  font: 800 22vw/0.82 var(--display); letter-spacing: -0.045em; text-transform: uppercase;
+  text-align: center; white-space: nowrap; margin: 40px 0 56px;
+  transform-origin: center center; pointer-events: none;
+}
+.run { padding-inline: var(--gutter); }
+.run__track { position: relative; max-width: 760px; margin-inline: auto; padding-left: 40px; }
+.run__line {
+  position: absolute; left: 11px; top: 8px; bottom: 8px; width: 2px; border-radius: 2px;
+  background: var(--ember); transform-origin: center top;
+}
+.run__list { display: grid; gap: 24px; }
+.stop__card {
+  position: relative; height: 100%;
+  display: grid; gap: 8px; align-content: start;
+  padding: clamp(20px, 3vw, 32px);
+  border-radius: 24px; background: var(--surface);
+  border: 1px solid transparent; box-shadow: 0 0 0 1px var(--hairline);
+}
+.stop__card:focus-visible { border-radius: 24px; }
+.stop__dot {
+  position: absolute; left: -35px; top: 28px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--ember); box-shadow: 0 0 0 4px var(--bg);
+}
+.stop__when { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.tag { font: 400 0.6875rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--bg); background: var(--ember); padding: 5px 8px; border-radius: 999px; }
+.stop__title { font: 700 clamp(1.5rem, 2.4vw, 2rem)/1.1 var(--display); letter-spacing: -0.03em; text-wrap: balance; }
+.stop__where { color: var(--text); font-weight: 500; }
+.stop__body { color: var(--muted); font-size: 1rem; text-wrap: pretty; }
+
+/* Run mode: JS + wide screen + motion allowed (class added by script). */
+.exp.is-run { padding-top: 0; }
+.exp.is-run .exp__stage { height: 100svh; overflow: clip; display: flex; flex-direction: column; justify-content: center; }
+.exp.is-run .exp__label { position: absolute; top: 32px; left: 0; right: 0; }
+.exp.is-run .chapter { position: absolute; left: 0; right: 0; top: 50%; margin: -0.41em 0 0; }
+.exp.is-run .run__track { max-width: none; margin: 0; width: max-content; padding: 48px 0 0; }
+.exp.is-run .run__list { display: flex; gap: 32px; }
+.exp.is-run .stop { width: min(440px, 40vw); }
+.exp.is-run .run__line { left: 0; right: 0; top: 11px; bottom: auto; width: auto; height: 2px; transform-origin: left center; }
+.exp.is-run .stop__dot { left: 24px; top: -44px; }
+
+/* 5. End ------------------------------------------------------------- */
+.end { padding: 160px var(--gutter) 96px; text-align: center; display: grid; justify-items: center; gap: 24px; }
+.end__title { font-size: clamp(2.75rem, 9vw, 7.5rem); max-width: 14ch; }
+.end__sub { color: var(--muted); max-width: 46ch; }
+.pill {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 56px; padding: 0 28px;
+  border-radius: 999px; background: var(--ember); color: var(--bg); text-decoration: none;
+  font: 500 1rem/1 var(--body); max-width: 100%; overflow-wrap: anywhere;
+  transition-property: transform; transition-duration: 150ms; transition-timing-function: ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+.pill svg { width: 18px; height: 18px; flex: none; }
+.end__links { display: flex; gap: 8px; }
+.end__links a {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px;
+  color: var(--muted); font: 400 0.8125rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+  text-underline-offset: 4px; transition: color 150ms ease-out;
+}
+@media (hover: hover) { .end__links a:hover { color: var(--text); } }
+footer { padding: 32px var(--gutter) 48px; border-top: 1px solid var(--hairline); color: var(--muted); font-size: 0.875rem; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn, .pill { transition-property: background-color, color; }
+  .btn:not(:disabled):active, .pill:active { transform: none; }
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/SplitText.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3.27/dist/lenis.min.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <h1>Vaibhav Dhir — work</h1>
+  <nav aria-label="Sections">
+    <ul>
+      <li><a href="#about">About</a></li>
+      <li><a href="#work">Work</a></li>
+      <li><a href="#skills">Skills</a></li>
+      <li><a href="#experience">Experience</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" tabindex="-1">
+
+  <!-- 1. About: Read the Brief + Read-Along -->
+  <section id="about" class="brief" aria-labelledby="about-h">
+    <div class="brief__inner">
+      <h2 id="about-h" class="label">About</h2>
+      <p class="brief__text">I build AI systems that ship. LLM features in a production financial platform, an agent that runs a job search end to end, and computer vision that tracks a whole match in real time. Then I stay with the people using them <span class="hl">until they work</span>.</p>
+    </div>
+  </section>
+
+  <!-- 2. Projects: card stack -->
+  <section id="work" class="work" aria-labelledby="work-h">
+    <div class="section-head">
+      <h2 id="work-h" class="label">Selected work</h2>
+      <p class="lede">Seven builds, from session replay to a fire-fighting robot.</p>
+    </div>
+    <ol class="stack">
+      <li class="stack__item" style="--i:0">
+        <article class="card" tabindex="0" aria-labelledby="p-replay">
+          <div class="card__top"><p class="card__kicker">Session replay with AI bug flagging</p><p class="card__idx"><span aria-hidden="true">01 / 07</span><span class="sr-only">Project 1 of 7</span></p></div>
+          <h3 class="card__title" id="p-replay">Replay</h3>
+          <p class="card__summary">Records user interactions on a website and replays them in a React dashboard; AI analysis flags the sessions where users got stuck, so friction surfaces without manual review.</p>
+          <ul class="chips" aria-label="Stack"><li class="chip">TypeScript</li><li class="chip">React</li><li class="chip">Node.js</li><li class="chip">PostgreSQL</li></ul>
+          <span class="card__shade" aria-hidden="true"></span>
+        </article>
+      </li>
+      <li class="stack__item" style="--i:1">
+        <article class="card" tabindex="0" aria-labelledby="p-careerpilot">
+          <div class="card__top"><p class="card__kicker">AI job-search agent</p><p class="card__idx"><span aria-hidden="true">02 / 07</span><span class="sr-only">Project 2 of 7</span></p></div>
+          <h3 class="card__title" id="p-careerpilot">CareerPilot AI</h3>
+          <p class="card__summary">Takes a job description, finds matching roles, applies, and tracks every application end to end, with automated SMS updates, recruiter follow-ups and referral requests.</p>
+          <ul class="chips" aria-label="Stack"><li class="chip">React</li><li class="chip">TypeScript</li><li class="chip">Node.js</li><li class="chip">Prisma</li><li class="chip">PostgreSQL</li><li class="chip">Claude API</li></ul>
+          <span class="card__shade" aria-hidden="true"></span>
+        </article>
+      </li>
+      <li class="stack__item" style="--i:2">
+        <article class="card" tabindex="0" aria-labelledby="p-luna">
+          <div class="card__top"><p class="card__kicker">Multimodal AI chatbot</p><p class="card__idx"><span aria-hidden="true">03 / 07</span><span class="sr-only">Project 3 of 7</span></p></div>
+          <h3 class="card__title" id="p-luna">Luna</h3>
+          <p class="card__summary">A full-stack conversational app that generates text and images with GPT-4 and DALL·E, with multi-turn memory and a Flask REST backend for conversation state.</p>
+          <ul class="chips" aria-label="Stack"><li class="chip">Python</li><li class="chip">Flask</li><li class="chip">OpenAI API</li><li class="chip">DALL·E</li></ul>
+          <span class="card__shade" aria-hidden="true"></span>
+        </article>
+      </li>
+      <li class="stack__item" style="--i:3">
+        <article class="card" tabindex="0" aria-labelledby="p-tracker">
+          <div class="card__top"><p class="card__kicker">Real-time multi-object tracking</p><p class="card__idx"><span aria-hidden="true">04 / 07</span><span class="sr-only">Project 4 of 7</span></p></div>
+          <h3 class="card__title" id="p-tracker">Soccer Player Tracker</h3>
+          <p class="card__summary">Tracks players, referees and the ball through a match in real time, with a re-identification pipeline that holds identities through occlusions and fast motion.</p>
+          <ul class="chips" aria-label="Stack"><li class="chip">Python</li><li class="chip">YOLOv8</li><li class="chip">DeepSORT</li><li class="chip">OpenCV</li></ul>
+          <span class="card__shade" aria-hidden="true"></span>
+        </article>
+      </li>
+      <li class="stack__item" style="--i:4">
+        <article class="card" tabindex="0" aria-labelledby="p-cropweed">
+          <div class="card__top"><p class="card__kicker">Precision agriculture vision</p><p class="card__idx"><span aria-hidden="true">05 / 07</span><span class="sr-only">Project 5 of 7</span></p></div>
+          <h3 class="card__title" id="p-cropweed">Crop and Weed Detector</h3>
+          <p class="card__summary">Tells crops from weeds in field images so treatment goes only where it is needed.</p>
+          <ul class="chips" aria-label="Stack"><li class="chip">Python</li><li class="chip">YOLOv3</li><li class="chip">OpenCV</li><li class="chip">Tkinter</li></ul>
+          <span class="card__shade" aria-hidden="true"></span>
+        </article>
+      </li>
+      <li class="stack__item" style="--i:5">
+        <article class="card" tabindex="0" aria-labelledby="p-stick">
+          <div class="card__top"><p class="card__kicker">Assistive navigation hardware</p><p class="card__idx"><span aria-hidden="true">06 / 07</span><span class="sr-only">Project 6 of 7</span></p></div>
+          <h3 class="card__title" id="p-stick">AI Blind Stick</h3>
+          <p class="card__summary">A walking aid that senses obstacles with ultrasonic sensors and guides its user around them.</p>
+          <ul class="chips" aria-label="Stack"><li class="chip">Embedded C</li><li class="chip">Arduino</li><li class="chip">Ultrasonic sensors</li></ul>
+          <span class="card__shade" aria-hidden="true"></span>
+        </article>
+      </li>
+      <li class="stack__item" style="--i:6">
+        <article class="card" tabindex="0" aria-labelledby="p-firebot">
+          <div class="card__top"><p class="card__kicker">Autonomous detection and response</p><p class="card__idx"><span aria-hidden="true">07 / 07</span><span class="sr-only">Project 7 of 7</span></p></div>
+          <h3 class="card__title" id="p-firebot">Fire Fighter Bot</h3>
+          <p class="card__summary">An Arduino robot that finds a fire with fused sensor readings, drives to it and puts it out.</p>
+          <ul class="chips" aria-label="Stack"><li class="chip">Arduino</li><li class="chip">Embedded C</li><li class="chip">Sensor fusion</li></ul>
+          <span class="card__shade" aria-hidden="true"></span>
+        </article>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 3. Skills: momentum lanes -->
+  <section id="skills" class="skills" aria-labelledby="skills-h">
+    <h2 id="skills-h" class="display skills__title">What I use</h2>
+    <!-- The real list. Visible with JS off or reduced motion; screen-reader-only while the lanes run. -->
+    <div class="skill-groups">
+      <div data-row="0"><h3 class="label">Languages</h3><ul class="chips chips--lg"><li class="chip">Python</li><li class="chip">TypeScript</li><li class="chip">JavaScript</li><li class="chip">C++</li><li class="chip">Java</li></ul></div>
+      <div data-row="0"><h3 class="label">AI and ML</h3><ul class="chips chips--lg"><li class="chip">Claude API</li><li class="chip">OpenAI API</li><li class="chip">LangChain</li><li class="chip">RAG</li><li class="chip">PyTorch</li><li class="chip">OpenCV</li><li class="chip">YOLOv8</li></ul></div>
+      <div data-row="1"><h3 class="label">Web and backend</h3><ul class="chips chips--lg"><li class="chip">React</li><li class="chip">Node.js</li><li class="chip">FastAPI</li><li class="chip">Flask</li><li class="chip">Prisma</li></ul></div>
+      <div data-row="1"><h3 class="label">Data and cloud</h3><ul class="chips chips--lg"><li class="chip">PostgreSQL</li><li class="chip">Redis</li><li class="chip">Docker</li><li class="chip">Kubernetes</li><li class="chip">Entra ID</li></ul></div>
+      <div data-row="1"><h3 class="label">Hardware</h3><ul class="chips chips--lg"><li class="chip">Arduino</li><li class="chip">Embedded C</li></ul></div>
+    </div>
+    <div class="lanes" aria-hidden="true" hidden></div>
+    <div class="lanes-ctrl" hidden>
+      <button type="button" class="btn" id="lane-toggle">
+        <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><rect class="i-pause" x="3" y="2" width="3.5" height="12" rx="1"/><rect class="i-pause" x="9.5" y="2" width="3.5" height="12" rx="1"/><path class="i-play" d="M4 2.5v11a.8.8 0 0 0 1.2.7l9-5.5a.8.8 0 0 0 0-1.4l-9-5.5A.8.8 0 0 0 4 2.5Z" style="display:none"/></svg>
+        <span>Pause motion</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- 4. Experience: chapter run -->
+  <section id="experience" class="exp" aria-labelledby="exp-h">
+    <div class="exp__stage">
+      <h2 id="exp-h" class="label exp__label">Experience</h2>
+      <p class="chapter" aria-hidden="true">Shipped</p>
+      <div class="run">
+        <div class="run__track">
+          <span class="run__line" aria-hidden="true"></span>
+          <ol class="run__list">
+            <li class="stop">
+              <article class="stop__card" tabindex="0" aria-labelledby="s-hcl">
+                <span class="stop__dot" aria-hidden="true"></span>
+                <p class="stop__when"><span class="label">Aug 2026</span><span class="tag">Now</span></p>
+                <h3 class="stop__title" id="s-hcl">IT Offshore Associate</h3>
+                <p class="stop__where">HCLTech · MetLife · Noida</p>
+                <p class="stop__body">Support MetLife’s global IT service desk under ITIL: incident triage and escalation in ServiceNow within SLAs, identity and access in Microsoft Entra ID, and Microsoft 365, Intune and SCCM support.</p>
+              </article>
+            </li>
+            <li class="stop">
+              <article class="stop__card" tabindex="0" aria-labelledby="s-hapticware">
+                <span class="stop__dot" aria-hidden="true"></span>
+                <p class="stop__when"><span class="label">May – Jun 2025</span></p>
+                <h3 class="stop__title" id="s-hapticware">Generative AI Engineer Intern</h3>
+                <p class="stop__where">Hapticware · Remote</p>
+                <p class="stop__body">Integrated OpenAI LLM APIs for real-time question answering and document summarization in a production financial platform. Prompt workflows cut API response latency by 40%; LangChain and vector-database pipelines power context-aware answers.</p>
+              </article>
+            </li>
+            <li class="stop">
+              <article class="stop__card" tabindex="0" aria-labelledby="s-vertex">
+                <span class="stop__dot" aria-hidden="true"></span>
+                <p class="stop__when"><span class="label">Oct – Nov 2023</span></p>
+                <h3 class="stop__title" id="s-vertex">Software Developer Intern</h3>
+                <p class="stop__where">Vertex Info Soft · Chandigarh</p>
+                <p class="stop__body">Built Flask and Firebase backend services and REST APIs; query optimization and caching cut response time by 30%, and stricter debugging and automated tests cut production bugs by 40%.</p>
+              </article>
+            </li>
+            <li class="stop">
+              <article class="stop__card" tabindex="0" aria-labelledby="s-vit">
+                <span class="stop__dot" aria-hidden="true"></span>
+                <p class="stop__when"><span class="label">2021 – 2025</span></p>
+                <h3 class="stop__title" id="s-vit">B.Tech, EEE</h3>
+                <p class="stop__where">VIT Chennai</p>
+                <p class="stop__body">Electrical and Electronics Engineering, with the projects that pulled me toward AI and computer vision.</p>
+              </article>
+            </li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. End -->
+  <section id="contact" class="end" aria-labelledby="end-h">
+    <h2 id="end-h" class="display end__title">Let’s build something real.</h2>
+    <p class="end__sub">Looking for forward deployed, solutions engineering and full-stack AI work.</p>
+    <a class="pill" href="mailto:vaibhavdhir01@gmail.com">
+      <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="m3.5 6 6.5 5 6.5-5"/></svg>
+      vaibhavdhir01@gmail.com
+    </a>
+    <ul class="end__links">
+      <li><a href="https://github.com/Vd421">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/vaibhav-dhir">LinkedIn</a></li>
+    </ul>
+  </section>
+</main>
+
+<footer>
+  <p>Vaibhav Dhir · Delhi, India</p>
+  <p>B.Tech EEE, VIT Chennai ’25</p>
+</footer>
+
+<script>
+/*
+  Progressive enhancement. The page above is complete without this script.
+  Nothing is dimmed, hidden or moved until GSAP, ScrollTrigger and SplitText
+  are confirmed loaded. Animated properties: transform and opacity only
+  (the underline's --u custom property feeds a scaleX transform).
+*/
+(function () {
+  'use strict';
+
+  function boot() {
+    var gsap = window.gsap, ScrollTrigger = window.ScrollTrigger, SplitText = window.SplitText;
+    if (!gsap || !ScrollTrigger || !SplitText) return; // CDN blocked: stay static.
+    gsap.registerPlugin(ScrollTrigger, SplitText);
+    ScrollTrigger.config({ ignoreMobileResize: true });
+    document.documentElement.classList.add('fx');
+
+    var reduceMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var S = { lenis: null, expFocus: null };
+
+    function go(y) {
+      y = Math.max(0, Math.round(y));
+      if (S.lenis) S.lenis.scrollTo(y, { duration: 0.6 });
+      else window.scrollTo({ top: y, behavior: reduceMQ.matches ? 'auto' : 'smooth' });
+    }
+
+    /* ---- Card stack geometry (sticky-safe: measured from the list, never the stuck cards) ---- */
+    var stackList = document.querySelector('.stack');
+    var stackItems = Array.prototype.slice.call(stackList.children);
+    var stackCards = stackItems.map(function (li) { return li.querySelector('.card'); });
+    function stackGeometry() {
+      var y = stackList.getBoundingClientRect().top + window.scrollY;
+      var natural = [], tops = [];
+      stackItems.forEach(function (li) {
+        var cs = getComputedStyle(li);
+        natural.push(y);
+        tops.push(cs.position === 'sticky' ? parseFloat(cs.top) || 0 : 0);
+        y += li.offsetHeight + (parseFloat(cs.marginBottom) || 0);
+      });
+      return { natural: natural, tops: tops };
+    }
+    // Keyboard: a focused card becomes the top card of the stack. Runs in every motion mode.
+    stackList.addEventListener('focusin', function (e) {
+      var card = e.target.closest('.card');
+      if (!card || !card.matches(':focus-visible')) return;
+      var i = stackCards.indexOf(card), g = stackGeometry();
+      go(g.natural[i] - g.tops[i]);
+    });
+
+    /* ---- Experience run: focus scrolls the pinned run so the card is in view ---- */
+    var exp = document.querySelector('.exp');
+    var stage = exp.querySelector('.exp__stage');
+    exp.addEventListener('focusin', function (e) {
+      var card = e.target.closest('.stop__card');
+      if (!card || !S.expFocus) return;
+      stage.scrollLeft = 0;
+      if (card.matches(':focus-visible')) S.expFocus(card);
+    });
+
+    /* ---- Skills: real list -> decorative lanes ---- */
+    var groupsEl = document.querySelector('.skill-groups');
+    var lanesEl = document.querySelector('.lanes');
+    var ctrl = document.querySelector('.lanes-ctrl');
+    var toggle = document.getElementById('lane-toggle');
+    var paused = false, laneSync = null;
+    toggle.addEventListener('click', function () {
+      paused = !paused;
+      toggle.querySelector('span').textContent = paused ? 'Play motion' : 'Pause motion';
+      toggle.querySelectorAll('.i-pause').forEach(function (n) { n.style.display = paused ? 'none' : ''; });
+      toggle.querySelector('.i-play').style.display = paused ? '' : 'none';
+      if (laneSync) laneSync();
+    });
+
+    function buildLanes() {
+      var rows = [[], []];
+      groupsEl.querySelectorAll('[data-row]').forEach(function (g) {
+        var r = +g.getAttribute('data-row');
+        g.querySelectorAll('.chip').forEach(function (c) { rows[r].push(c.textContent); });
+      });
+      lanesEl.textContent = '';
+      lanesEl.hidden = false;
+      var wide = Math.max(window.innerWidth, (window.screen && window.screen.width) || 0);
+      return rows.map(function (items) {
+        var lane = document.createElement('div'); lane.className = 'lane';
+        var track = document.createElement('div'); track.className = 'lane__track';
+        var set = document.createElement('div'); set.className = 'lane__set';
+        items.forEach(function (t) { var s = document.createElement('span'); s.className = 'chip'; s.textContent = t; set.appendChild(s); });
+        track.appendChild(set); lane.appendChild(track); lanesEl.appendChild(lane);
+        // Fill one half to at least the widest likely viewport, then duplicate the half.
+        var reps = Math.max(1, Math.ceil((wide * 1.05) / Math.max(1, set.offsetWidth)));
+        for (var k = 1; k < reps; k++) track.appendChild(set.cloneNode(true));
+        var half = Array.prototype.slice.call(track.children);
+        half.forEach(function (n) { track.appendChild(n.cloneNode(true)); });
+        return track;
+      });
+    }
+    function teardownLanes() {
+      lanesEl.textContent = '';
+      lanesEl.hidden = true;
+      ctrl.hidden = true;
+      groupsEl.classList.remove('sr-only');
+      laneSync = null;
+    }
+
+    var mm = gsap.matchMedia();
+    mm.add({
+      wide: '(min-width: 768px) and (min-height: 600px)',
+      fine: '(pointer: fine)',
+      stacky: '(min-height: 560px)',
+      motion: '(prefers-reduced-motion: no-preference)'
+    }, function (ctx) {
+      var c = ctx.conditions;
+      if (!c.motion) return; // Reduced motion: the static page is the experience.
+      var cleanups = [];
+
+      /* Layout switches first, so every trigger measures the final layout. */
+      if (c.wide) {
+        exp.classList.add('is-run');
+        cleanups.push(function () { exp.classList.remove('is-run'); });
+      }
+      var tracks = buildLanes();
+      groupsEl.classList.add('sr-only');
+      ctrl.hidden = false;
+      cleanups.push(teardownLanes);
+
+      /* Lenis: desktop, fine pointer only. GSAP's ticker is the single clock. */
+      if (c.wide && c.fine && window.Lenis) {
+        var lenis = new window.Lenis({ anchors: true });
+        var raf = function (t) { lenis.raf(t * 1000); };
+        lenis.on('scroll', ScrollTrigger.update);
+        gsap.ticker.add(raf);
+        gsap.ticker.lagSmoothing(0);
+        S.lenis = lenis;
+        cleanups.push(function () { gsap.ticker.remove(raf); gsap.ticker.lagSmoothing(500, 33); lenis.destroy(); S.lenis = null; });
+      }
+
+      /* 1. Brief: words light in reading order, then the underline draws. */
+      var brief = document.querySelector('.brief');
+      var text = brief.querySelector('.brief__text');
+      var hl = text.querySelector('.hl');
+      var split = SplitText.create(text, { type: 'words', wordsClass: 'w', tag: 'span', aria: 'none' });
+      cleanups.push(function () { split.revert(); });
+      var briefTl = gsap.timeline({
+        scrollTrigger: c.wide
+          ? { trigger: brief, start: 'top top', end: function () { return '+=' + Math.round(window.innerHeight * 1.6); }, pin: true, scrub: 0.5, invalidateOnRefresh: true }
+          : { trigger: text, start: 'top 85%', end: 'bottom 40%', scrub: 0.5 }
+      });
+      briefTl
+        .fromTo(split.words, { opacity: 0.18 }, { opacity: 1, duration: 1, stagger: 1, ease: 'none' })
+        .fromTo(hl, { '--u': 0 }, { '--u': 1, duration: 4, ease: 'power2.out' })
+        .to({}, { duration: c.wide ? 3 : 0.5 }); // hold fully lit before the pin releases
+
+      /* 2. Card stack: the covered card shrinks to 0.94 and dims to 50%. */
+      if (c.stacky) {
+        var geo = stackGeometry();
+        var onInit = function () { geo = null; };
+        ScrollTrigger.addEventListener('refreshInit', onInit);
+        cleanups.push(function () { ScrollTrigger.removeEventListener('refreshInit', onInit); });
+        var g = function () { return geo || (geo = stackGeometry()); };
+        stackCards.forEach(function (card, i) {
+          if (i === stackCards.length - 1) return;
+          gsap.timeline({
+            scrollTrigger: {
+              trigger: stackList,
+              start: function () { return g().natural[i + 1] - window.innerHeight; },
+              end: function () { var q = g(); return q.natural[i + 1] - q.tops[i + 1]; },
+              scrub: true,
+              invalidateOnRefresh: true
+            }
+          })
+            .fromTo(card, { scale: 1 }, { scale: 0.94, ease: 'none' }, 0)
+            .fromTo(card.querySelector('.card__shade'), { opacity: 0 }, { opacity: 0.5, ease: 'none' }, 0);
+        });
+      }
+
+      /* 3. Skills: heading grows in; lanes loop, flip with scroll direction, surge with velocity. */
+      gsap.fromTo('.skills__title', { scale: 0.6 }, {
+        scale: 1, ease: 'none',
+        scrollTrigger: { trigger: '.skills__title', start: 'top bottom', end: 'top 35%', scrub: true }
+      });
+      var speed = c.wide ? 56 : 30; // px per second
+      var sign = [1, -1];
+      var dir = 1, inView = false;
+      var loops = tracks.map(function (track) {
+        var t = gsap.fromTo(track, { xPercent: 0 }, { xPercent: -50, ease: 'none', duration: (track.scrollWidth / 2) / speed, repeat: -1, paused: true });
+        t.totalTime(t.duration() * 1000); // headroom so negative timeScale never hits the start
+        return t;
+      });
+      loops.forEach(function (t, r) { t.timeScale(sign[r]); });
+      laneSync = function () {
+        var run = inView && !paused;
+        loops.forEach(function (t) { if (run) t.resume(); else t.pause(); });
+      };
+      ScrollTrigger.create({
+        trigger: '.skills', start: 'top bottom', end: 'bottom top',
+        onToggle: function (self) { inView = self.isActive; laneSync(); },
+        onUpdate: function (self) {
+          if (paused) return;
+          dir = self.direction;
+          var boost = 1 + Math.min(Math.abs(self.getVelocity()) / 350, 5);
+          loops.forEach(function (t, r) {
+            t.timeScale(sign[r] * dir * boost);
+            gsap.to(t, { timeScale: sign[r] * dir, duration: 0.9, ease: 'power2.out', overwrite: true });
+          });
+        }
+      });
+
+      /* 4. Experience. */
+      var word = exp.querySelector('.chapter');
+      var track = exp.querySelector('.run__track');
+      var line = exp.querySelector('.run__line');
+      var dots = Array.prototype.slice.call(exp.querySelectorAll('.stop__dot'));
+      var stopCards = Array.prototype.slice.call(exp.querySelectorAll('.stop__card'));
+      if (c.wide) {
+        var run = exp.querySelector('.run');
+        var dist = function () {
+          var inner = run.clientWidth - parseFloat(getComputedStyle(run).paddingLeft) - parseFloat(getComputedStyle(run).paddingRight);
+          return Math.max(0, track.scrollWidth - inner);
+        };
+        var tRect = track.getBoundingClientRect();
+        var W = track.scrollWidth || 1;
+        var rel = dots.map(function (d) { var r = d.getBoundingClientRect(); return (r.left + r.width / 2 - tRect.left) / W; });
+        var P1 = 2.0, P2 = 2.4; // phase 1: word grows, holds, steps back, run rises; phase 2: sideways run
+        var expTl = gsap.timeline({
+          defaults: { ease: 'none' },
+          scrollTrigger: {
+            trigger: stage, start: 'top top',
+            end: function () { return '+=' + Math.round(window.innerHeight * 1.8 + dist()); },
+            pin: true, scrub: 0.5, invalidateOnRefresh: true
+          }
+        });
+        expTl
+          .fromTo(word, { scale: 0.16 }, { scale: 1, duration: 1.0, ease: 'power1.in' }, 0)
+          .fromTo(word, { opacity: 1 }, { opacity: 0.08, duration: 0.4 }, 1.2)
+          .fromTo(track, { y: function () { return window.innerHeight * 0.45; }, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: 'power2.out' }, 1.45)
+          .fromTo(track, { x: 0 }, { x: function () { return -dist(); }, duration: P2 }, P1)
+          .fromTo(line, { scaleX: 0 }, { scaleX: 1, duration: P2 }, P1);
+        dots.forEach(function (d, i) {
+          expTl.fromTo(d, { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.12, ease: 'power2.out' }, P1 + Math.min(0.98, rel[i]) * P2);
+        });
+        S.expFocus = function (card) {
+          var st = expTl.scrollTrigger, D = dist();
+          var off = card.getBoundingClientRect().left - track.getBoundingClientRect().left;
+          var p = D ? Math.min(1, Math.max(0, off / D)) : 0;
+          var time = P1 + p * P2;
+          go(st.start + (time / expTl.duration()) * (st.end - st.start));
+        };
+        cleanups.push(function () { S.expFocus = null; });
+      } else {
+        gsap.fromTo(word, { scale: 0.25 }, { scale: 1, ease: 'none', scrollTrigger: { trigger: word, start: 'top bottom', end: 'center 55%', scrub: true } });
+        gsap.fromTo(line, { scaleY: 0 }, { scaleY: 1, ease: 'none', scrollTrigger: { trigger: track, start: 'top 70%', end: 'bottom 70%', scrub: true } });
+        dots.forEach(function (d) {
+          gsap.fromTo(d, { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: 'power2.out', scrollTrigger: { trigger: d, start: 'top 70%', toggleActions: 'play none none reverse' } });
+        });
+      }
+
+      ScrollTrigger.refresh();
+      return function () { cleanups.forEach(function (f) { f(); }); };
+    });
+
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { ScrollTrigger.refresh(); });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>
