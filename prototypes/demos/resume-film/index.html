@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Résumé, the Film</title>
+<meta name="description" content="Vaibhav Dhir's résumé as plain HTML, with an optional four-act film version.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@700;800&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #0b0b0c;          /* near-black base */
+  --black: #000;          /* letterbox bars */
+  --fg: #f2efe9;          /* off-white, 17.1:1 on --bg */
+  --muted: #a8a39b;       /* secondary text, 7.9:1 on --bg, 8.4:1 on --black */
+  --ember: #ff8a3d;       /* the one accent, 8.4:1 on --bg */
+  --line: rgb(242 239 233 / 0.14);
+  --line-strong: rgb(242 239 233 / 0.28);
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-cine: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --font-display: "Inter Tight", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --gutter: clamp(16px, 5vw, 64px);
+}
+/* Dark-only by design (color-scheme: dark); no light theme. */
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 1.0625rem/1.6 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-wrap: break-word;
+}
+h1, h2, h3 { font-family: var(--font-display); font-weight: 800; margin: 0; text-wrap: balance; }
+p { margin: 0; text-wrap: pretty; }
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
+a:hover { text-decoration-color: var(--ember); }
+:focus-visible { outline: 2px solid var(--ember); outline-offset: 3px; border-radius: 4px; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+.mono { font-family: var(--font-mono); font-weight: 400; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; }
+.skip-link {
+  position: absolute; left: 16px; top: -100px; z-index: 10;
+  background: var(--fg); color: var(--bg); padding: 12px 16px; border-radius: 8px;
+}
+.skip-link:focus { top: 16px; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; min-width: 44px; padding: 0 22px;
+  border: 1px solid transparent; border-radius: 999px;
+  font: 500 1rem/1 var(--font-body); color: var(--fg); background: transparent;
+  text-decoration: none; cursor: pointer;
+  transition: transform 150ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn svg { width: 18px; height: 18px; flex: none; }
+.btn svg[hidden] { display: none; }
+.btn-primary { background: var(--ember); color: var(--bg); font-weight: 500; }
+.btn-primary:hover { background: #ff9b57; }
+.btn-ghost { border-color: var(--line-strong); }
+.btn-ghost:hover { background: rgb(242 239 233 / 0.06); border-color: rgb(242 239 233 / 0.45); }
+.btn-icon { padding: 0; width: 44px; }
+@media (prefers-reduced-motion: no-preference) {
+  .btn:active:not(:disabled) { transform: scale(0.96); }
+}
+
+/* ---------- Landing strip ---------- */
+.landing {
+  min-height: 72svh;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 72px var(--gutter);
+  max-width: 1200px; margin: 0 auto;
+  border-bottom: 1px solid var(--line);
+}
+.landing .eyebrow { color: var(--muted); margin-bottom: 20px; }
+.landing h1 {
+  font-size: clamp(2.75rem, 10vw, 7.5rem);
+  line-height: 0.95; letter-spacing: -0.03em; text-transform: uppercase;
+}
+.landing .lede { margin-top: 20px; color: var(--muted); max-width: 46ch; font-size: clamp(1.0625rem, 1.6vw, 1.25rem); }
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 36px; }
+.no-js-note { margin-top: 16px; color: var(--muted); font-size: 0.9375rem; }
+.js .no-js-note { display: none; }
+
+/* ---------- Plain résumé ---------- */
+.resume {
+  max-width: 1200px; margin: 0 auto;
+  padding: 72px var(--gutter) 96px;
+}
+.resume-head { display: grid; gap: 16px; margin-bottom: 56px; }
+.resume-head h2 { font-size: clamp(2rem, 5vw, 3.25rem); letter-spacing: -0.02em; line-height: 1.05; }
+.resume-head .role { color: var(--muted); max-width: 60ch; }
+.contact-list { display: flex; flex-wrap: wrap; gap: 4px 24px; margin: 0; padding: 0; list-style: none; }
+.contact-list a { display: inline-flex; align-items: center; min-height: 44px; }
+.r-section {
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  gap: 24px; padding: 40px 0; border-top: 1px solid var(--line);
+}
+@media (min-width: 860px) {
+  .r-section { grid-template-columns: 220px minmax(0, 1fr); gap: 48px; }
+}
+.r-section > h3 { font-family: var(--font-mono); font-weight: 400; font-size: 0.8125rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ember); padding-top: 6px; }
+.entry + .entry { margin-top: 40px; }
+.entry-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 24px; align-items: baseline; }
+.entry h4 { margin: 0; font: 700 1.375rem/1.25 var(--font-display); letter-spacing: -0.01em; }
+.entry .where { color: var(--fg); margin-top: 2px; }
+.entry .when { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.entry ul { margin: 14px 0 0; padding-left: 1.15em; max-width: 68ch; }
+.entry li { margin-top: 6px; }
+.entry li::marker { color: var(--muted); }
+.entry .detail { margin-top: 10px; color: var(--muted); max-width: 68ch; }
+.stack { color: var(--muted); margin-top: 6px; }
+.projects { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 680px) { .projects { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.projects h4 { margin: 0; font: 700 1.25rem/1.3 var(--font-display); }
+.projects p { margin-top: 6px; color: var(--fg); }
+.skills { margin: 0; display: grid; gap: 18px; }
+.skills div { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
+@media (min-width: 600px) { .skills div { grid-template-columns: 140px minmax(0, 1fr); gap: 24px; } }
+.skills dt { color: var(--muted); }
+.skills dd { margin: 0; }
+.site-foot { max-width: 1200px; margin: 0 auto; padding: 32px var(--gutter) 48px; color: var(--muted); border-top: 1px solid var(--line); font-size: 0.9375rem; }
+
+/* ---------- Film overlay ---------- */
+.film {
+  position: fixed; inset: 0; z-index: 100;
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+  color: var(--fg);
+  overscroll-behavior: contain;
+}
+.film[hidden] { display: none; }
+.film:focus { outline: none; }
+.film-bg, .leak, .grain, .vignette { position: absolute; inset: 0; pointer-events: none; }
+.film-bg { background: var(--bg); opacity: 0; transition: opacity 400ms ease-out; }
+.vignette { background: radial-gradient(120% 90% at 50% 50%, transparent 55%, rgb(0 0 0 / 0.55) 100%); opacity: 0; transition: opacity 400ms ease-out; }
+.leak {
+  inset: -20%;
+  background: radial-gradient(40% 35% at 30% 40%, rgb(255 138 61 / 0.10), transparent 70%);
+  opacity: 0; transition: opacity 1200ms ease-out;
+}
+.grain {
+  opacity: 0; transition: opacity 400ms ease-out;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.film.is-open .film-bg { opacity: 1; }
+.film.is-open .vignette { opacity: 1; }
+.film.is-open .leak { opacity: 1; }
+.film.is-open .grain { opacity: 0.06; }
+@media (prefers-reduced-motion: no-preference) {
+  .film.is-open .leak { animation: leak-drift 28s ease-in-out infinite alternate; }
+  .film.is-paused .leak { animation-play-state: paused; }
+}
+@keyframes leak-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(22%, 10%, 0); }
+}
+
+.bar {
+  position: relative; z-index: 2;
+  background: var(--black);
+  padding: 8px var(--gutter);
+  transition: transform 600ms var(--ease-cine);
+}
+.bar-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; transform: translateY(-100%); }
+.bar-top .mono { color: var(--muted); }
+.bar-bottom { transform: translateY(100%); padding-top: 4px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+.film.is-open .bar { transform: none; }
+.film.is-closing .bar, .film.is-closing .film-bg, .film.is-closing .grain, .film.is-closing .vignette, .film.is-closing .leak, .film.is-closing .stage { transition-duration: 150ms; transition-timing-function: ease-out; }
+.btn-skip { padding: 0 14px 0 16px; font-size: 0.9375rem; }
+
+.stage { position: relative; z-index: 1; opacity: 0; transition: opacity 400ms ease-out 150ms; }
+.film.is-open .stage { opacity: 1; }
+.film.is-closing .stage { transition-delay: 0ms; }
+
+.scene {
+  position: absolute; inset: 0;
+  overflow-y: auto; overscroll-behavior: contain;
+  display: flex;
+  padding: 24px var(--gutter);
+}
+.scene[hidden] { display: none; }
+.scene-inner { margin: auto 0; width: 100%; max-width: 1120px; }
+.scene-center .scene-inner { margin: auto; text-align: center; }
+
+.title-name {
+  font-size: clamp(3rem, 13vw, 10.5rem);
+  line-height: 0.9; letter-spacing: -0.035em; text-transform: uppercase;
+}
+.title-sub { margin-top: clamp(16px, 3vh, 28px); font: 500 clamp(1.0625rem, 2.2vw, 1.5rem)/1.4 var(--font-body); color: var(--muted); }
+
+.act-label { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; color: var(--muted); }
+.act-label .num { color: var(--ember); }
+.act-title {
+  margin-top: clamp(10px, 2vh, 18px);
+  font-size: clamp(2.5rem, 9vw, 7.5rem);
+  line-height: 0.95; letter-spacing: -0.035em;
+  transform-origin: 0 100%;
+}
+.act-role { margin-top: clamp(10px, 2vh, 18px); font: 700 clamp(1.125rem, 2.4vw, 1.75rem)/1.25 var(--font-display); letter-spacing: -0.01em; }
+.act-facts { margin-top: clamp(16px, 3vh, 28px); display: grid; gap: 10px; max-width: 60ch; }
+.act-facts p { font-size: clamp(1rem, 1.7vw, 1.25rem); }
+.act-facts .muted { color: var(--muted); }
+.counters { margin-top: clamp(18px, 3.5vh, 36px); display: grid; gap: 20px 48px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 640px) { .counters.two { grid-template-columns: repeat(2, minmax(0, max-content)); } }
+.counter .figure {
+  display: block;
+  font: 800 clamp(3rem, 9vw, 6.5rem)/0.95 var(--font-display);
+  letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+}
+.counter .cap { display: block; margin-top: 8px; font-size: clamp(0.9375rem, 1.5vw, 1.0625rem); max-width: 34ch; }
+.counter .cap .muted { color: var(--muted); }
+.tags { margin: clamp(16px, 3vh, 28px) 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+.tags li { padding: 6px 12px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--fg); }
+.badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 10px; border-radius: 999px;
+  border: 1px solid var(--ember); color: var(--ember);
+}
+.badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ember); }
+
+.credits-wrap { overflow: hidden; }
+.credits-head { color: var(--ember); }
+.credits { list-style: none; margin: clamp(14px, 2.5vh, 24px) 0 0; padding: 0; display: grid; gap: clamp(12px, 2.2vh, 22px); }
+.credits .name { display: block; font: 700 clamp(1.5rem, 4vw, 2.75rem)/1.1 var(--font-display); letter-spacing: -0.02em; }
+.credits .what { display: block; margin-top: 2px; color: var(--fg); font-size: clamp(0.9375rem, 1.5vw, 1.0625rem); }
+.credits .stack { margin-top: 4px; }
+.credits-actions { margin-top: clamp(20px, 4vh, 36px); display: grid; gap: 14px; }
+.credits-actions .row { display: flex; flex-wrap: wrap; gap: 12px; }
+.email-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; color: var(--muted); }
+.email-row .addr { color: var(--fg); user-select: all; -webkit-user-select: all; font-variant-numeric: tabular-nums; }
+.btn-small { min-height: 44px; padding: 0 16px; font-size: 0.875rem; }
+.copy-status { min-width: 6ch; }
+
+/* progress + controls */
+.progress { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.seg {
+  appearance: none; background: none; border: 0; margin: 0; padding: 0; color: var(--muted);
+  min-height: 44px; cursor: pointer; display: grid; align-content: center; gap: 8px; text-align: left;
+  border-radius: 4px;
+}
+.seg .track { display: block; height: 3px; border-radius: 2px; background: rgb(242 239 233 / 0.18); overflow: hidden; }
+.seg .fill { display: block; height: 100%; background: var(--fg); transform: scaleX(0); transform-origin: 0 50%; }
+.seg .lbl { font-size: 0.6875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.seg[aria-current="step"] { color: var(--fg); }
+.seg[aria-current="step"] .fill { background: var(--ember); }
+.seg:hover .track { background: rgb(242 239 233 / 0.32); }
+.controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 2px; }
+.controls .group { display: flex; align-items: center; gap: 8px; }
+.controls .hint { color: var(--muted); }
+.btn-play { min-width: 112px; }
+@media (max-width: 559px) {
+  .controls .hint { display: none; }
+  .controls { justify-content: center; }
+  .bar-top .mono { font-size: 0.6875rem; }
+}
+@media (max-width: 559px), (max-height: 720px) {
+  .credits .stack { display: none; }
+  .credits .name { font-size: clamp(1.375rem, 4vw, 2.25rem); }
+  .credits { gap: 10px; }
+}
+@media (max-height: 560px) {
+  .counter .figure { font-size: clamp(2.25rem, 7vw, 4rem); }
+  .act-title { font-size: clamp(2.25rem, 7vw, 5rem); }
+}
+
+/* Reduced motion: bars and layers fade instead of sliding */
+@media (prefers-reduced-motion: reduce) {
+  .bar { transition: opacity 200ms ease-out; opacity: 0; }
+  .bar-top, .bar-bottom { transform: none; }
+  .film.is-open .bar { opacity: 1; }
+  .film-bg, .grain, .vignette, .leak, .stage { transition-duration: 200ms; transition-delay: 0ms; }
+}
+@media (forced-colors: active) {
+  .seg .fill { background: Highlight; }
+  .btn-primary { border-color: ButtonText; }
+}
+</style>
+</head>
+<body>
+<script>document.documentElement.classList.add('js');</script>
+<a class="skip-link" href="#resume">Skip to résumé</a>
+
+<div id="page">
+  <header class="landing" aria-labelledby="landing-name">
+    <p class="eyebrow mono">Résumé · 2026</p>
+    <h1 id="landing-name">Vaibhav Dhir</h1>
+    <p class="lede">IT Offshore Associate at HCLTech on the MetLife account. B.Tech EEE from VIT Chennai, with internships in generative AI and backend development.</p>
+    <div class="cta-row">
+      <button type="button" class="btn btn-primary" id="play-film" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a.75.75 0 0 0 1.14.64l10.4-6.5a.75.75 0 0 0 0-1.28L9.14 4.86A.75.75 0 0 0 8 5.5Z" fill="currentColor"/></svg>
+        Play my résumé
+      </button>
+      <a class="btn btn-ghost" href="#resume" id="read-instead">Read it instead</a>
+    </div>
+    <p class="no-js-note">The film version needs JavaScript. The full résumé is below.</p>
+  </header>
+
+  <main id="resume" class="resume" tabindex="-1" aria-labelledby="resume-title">
+    <div class="resume-head">
+      <h2 id="resume-title">Vaibhav Dhir</h2>
+      <p class="role">IT Offshore Associate, HCLTech (MetLife account), Noida</p>
+      <ul class="contact-list">
+        <li><a href="mailto:vaibhavdhir01@gmail.com">vaibhavdhir01@gmail.com</a></li>
+        <li><a href="https://github.com/Vd421">GitHub · Vd421</a></li>
+        <li><a href="https://www.linkedin.com/in/vaibhav-dhir">LinkedIn · vaibhav-dhir</a></li>
+      </ul>
+      <!-- TODO: offer a redacted PDF download (the existing PDF contains a phone number). -->
+    </div>
+
+    <section class="r-section" aria-labelledby="h-exp">
+      <h3 id="h-exp">Experience</h3>
+      <div>
+        <article class="entry">
+          <div class="entry-head">
+            <div>
+              <h4>IT Offshore Associate</h4>
+              <p class="where">HCLTech · MetLife account · Noida</p>
+            </div>
+            <p class="when mono">Aug 2026 – Present</p>
+          </div>
+          <ul>
+            <li>MetLife global IT service desk under ITIL.</li>
+            <li>Incident triage, resolution and escalation in ServiceNow within SLAs.</li>
+            <li>Identity and access in Azure AD / Microsoft Entra ID: provisioning, password resets, MFA, group and licence assignments.</li>
+            <li>Microsoft 365 troubleshooting: Outlook, Teams, OneDrive, Exchange.</li>
+            <li>Deployment and device management with Intune / SCCM.</li>
+          </ul>
+        </article>
+        <article class="entry">
+          <div class="entry-head">
+            <div>
+              <h4>Generative AI Engineer Intern</h4>
+              <p class="where">Hapticware · Remote</p>
+            </div>
+            <p class="when mono">May – Jun 2025</p>
+          </div>
+          <ul>
+            <li>Integrated OpenAI LLM APIs for real-time question answering and document summarization in a production financial platform.</li>
+            <li>Prompt-engineering workflows reduced API response latency by 40%.</li>
+            <li>Backend pipelines for context-aware responses and multimodal outputs with LangChain and vector databases.</li>
+            <li>Worked with frontend engineers to embed AI features.</li>
+          </ul>
+        </article>
+        <article class="entry">
+          <div class="entry-head">
+            <div>
+              <h4>Software Developer Intern</h4>
+              <p class="where">Vertex Info Soft · Chandigarh</p>
+            </div>
+            <p class="when mono">Oct – Nov 2023</p>
+          </div>
+          <ul>
+            <li>Flask and Firebase backend services; 30% improvement in system response time through query optimization and caching.</li>
+            <li>RESTful APIs for internal integrations.</li>
+            <li>Reduced production bugs by 40% through debugging protocols and automated testing.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="r-section" aria-labelledby="h-edu">
+      <h3 id="h-edu">Education</h3>
+      <div>
+        <article class="entry">
+          <div class="entry-head">
+            <div>
+              <h4>VIT Chennai</h4>
+              <p class="where">B.Tech, Electrical and Electronics Engineering</p>
+            </div>
+            <p class="when mono">2021 – 2025</p>
+          </div>
+          <p class="detail">Coursework: Data Structures and Algorithms, Artificial Intelligence, Machine Learning, Deep Learning, System Design, Embedded Systems.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="r-section" aria-labelledby="h-proj">
+      <h3 id="h-proj">Projects</h3>
+      <div class="projects">
+        <article>
+          <h4>Replay</h4>
+          <p>Session replay with AI bug detection.</p>
+          <p class="stack mono">TypeScript · React · Node.js · PostgreSQL</p>
+        </article>
+        <article>
+          <h4>CareerPilot AI</h4>
+          <p>AI job-search agent.</p>
+          <p class="stack mono">React · TypeScript · Node · Prisma · PostgreSQL · Claude API</p>
+        </article>
+        <article>
+          <h4>Luna</h4>
+          <p>Multimodal AI chatbot.</p>
+          <p class="stack mono">Python · Flask · GPT-4 · DALL·E</p>
+        </article>
+        <article>
+          <h4>YOLOv8 Real-Time Soccer Player Tracking</h4>
+          <p>Real-time soccer player tracking.</p>
+          <p class="stack mono">Python · YOLOv8 · DeepSORT · OpenCV</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="r-section" aria-labelledby="h-skills">
+      <h3 id="h-skills">Skills</h3>
+      <dl class="skills">
+        <div><dt>Languages</dt><dd>Python, TypeScript, JavaScript, C++, Java</dd></div>
+        <div><dt>AI / ML</dt><dd>LLMs, Claude and OpenAI APIs, prompt engineering, RAG, LangChain, Transformers, HuggingFace, PyTorch, TensorFlow, OpenCV, YOLOv3 / v8</dd></div>
+        <div><dt>Frameworks</dt><dd>React, Node.js, Express, Prisma, Flask, FastAPI</dd></div>
+        <div><dt>Databases</dt><dd>MongoDB, Firebase, PostgreSQL, Redis</dd></div>
+        <div><dt>Tools</dt><dd>Docker, Kubernetes, Git, CI/CD, Linux</dd></div>
+        <div><dt>IT / Cloud</dt><dd>Microsoft Entra ID, Microsoft 365, Intune / SCCM, ServiceNow, ITIL</dd></div>
+      </dl>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <p>Vaibhav Dhir · <a href="mailto:vaibhavdhir01@gmail.com">vaibhavdhir01@gmail.com</a></p>
+  </footer>
+</div>
+
+<!-- ================= Film overlay ================= -->
+<div class="film" id="film" role="dialog" aria-modal="true" aria-label="Résumé film" tabindex="-1" hidden>
+  <div class="film-bg"></div>
+  <div class="leak" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="bar bar-top">
+    <span class="mono" aria-hidden="true">Vaibhav Dhir · Résumé</span>
+    <button type="button" class="btn btn-ghost btn-skip" id="film-close" title="Close the film (Esc)">
+      Skip
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+    </button>
+  </div>
+
+  <div class="stage">
+    <!-- 0 · Title -->
+    <section class="scene scene-center" hidden aria-label="Title">
+      <div class="scene-inner">
+        <h2 class="title-name fx" data-fx="title" data-at="350">Vaibhav Dhir</h2>
+        <p class="title-sub fx" data-fx="rise" data-at="1250">a résumé in four acts</p>
+      </div>
+    </section>
+
+    <!-- 1 · Act I -->
+    <section class="scene" hidden aria-label="Act 1 of 4: VIT Chennai">
+      <div class="scene-inner">
+        <p class="act-label mono fx" data-fx="rise" data-at="0"><span class="num">Act I</span><span>2021–2025</span></p>
+        <h2 class="act-title fx" data-fx="title" data-at="100">VIT Chennai</h2>
+        <p class="act-role fx" data-fx="rise" data-at="700">B.Tech, Electrical and Electronics Engineering</p>
+        <div class="act-facts">
+          <p class="muted fx" data-fx="rise" data-at="1300">Coursework</p>
+          <p class="fx" data-fx="rise" data-at="1400">AI, Machine Learning, Deep Learning, System Design, Embedded Systems.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 · Act II -->
+    <section class="scene" hidden aria-label="Act 2 of 4: Vertex Info Soft">
+      <div class="scene-inner">
+        <p class="act-label mono fx" data-fx="rise" data-at="0"><span class="num">Act II</span><span>Chandigarh · Oct–Nov 2023</span></p>
+        <h2 class="act-title fx" data-fx="title" data-at="100">Vertex Info Soft</h2>
+        <p class="act-role fx" data-fx="rise" data-at="700">Software Developer Intern</p>
+        <div class="counters two">
+          <p class="counter fx" data-fx="rise" data-at="1100">
+            <span class="figure" aria-hidden="true"><span class="count" data-to="30" data-at="1100" data-dur="1100">30</span>%</span>
+            <span class="cap"><span class="sr-only">30% </span>faster system response <span class="muted">· query optimization + caching</span></span>
+          </p>
+          <p class="counter fx" data-fx="rise" data-at="1200">
+            <span class="figure" aria-hidden="true"><span class="count" data-to="40" data-at="1200" data-dur="1100">40</span>%</span>
+            <span class="cap"><span class="sr-only">40% </span>fewer production bugs <span class="muted">· debugging protocols + automated tests</span></span>
+          </p>
+        </div>
+        <ul class="tags mono" aria-label="Stack">
+          <li class="fx" data-fx="rise" data-at="2000">Flask</li>
+          <li class="fx" data-fx="rise" data-at="2100">Firebase</li>
+          <li class="fx" data-fx="rise" data-at="2200">REST APIs</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 3 · Act III -->
+    <section class="scene" hidden aria-label="Act 3 of 4: Hapticware">
+      <div class="scene-inner">
+        <p class="act-label mono fx" data-fx="rise" data-at="0"><span class="num">Act III</span><span>Remote · May–Jun 2025</span></p>
+        <h2 class="act-title fx" data-fx="title" data-at="100">Hapticware</h2>
+        <p class="act-role fx" data-fx="rise" data-at="700">Generative AI Engineer Intern</p>
+        <div class="counters">
+          <p class="counter fx" data-fx="rise" data-at="1100">
+            <span class="figure" aria-hidden="true"><span class="count" data-to="40" data-at="1100" data-dur="1100">40</span>%</span>
+            <span class="cap"><span class="sr-only">40% </span>lower API response latency <span class="muted">· prompt-engineering workflows</span></span>
+          </p>
+        </div>
+        <div class="act-facts">
+          <p class="fx" data-fx="rise" data-at="1700">OpenAI LLM APIs for real-time Q&amp;A and document summarization in a production financial platform.</p>
+        </div>
+        <ul class="tags mono" aria-label="Stack">
+          <li class="fx" data-fx="rise" data-at="2100">LangChain</li>
+          <li class="fx" data-fx="rise" data-at="2200">Vector databases</li>
+          <li class="fx" data-fx="rise" data-at="2300">OpenAI</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 4 · Act IV -->
+    <section class="scene" hidden aria-label="Act 4 of 4: HCLTech">
+      <div class="scene-inner">
+        <p class="act-label mono fx" data-fx="rise" data-at="0"><span class="num">Act IV</span><span>MetLife · Noida · Aug 2026 – Now</span></p>
+        <h2 class="act-title fx" data-fx="title" data-at="100">HCLTech</h2>
+        <p class="act-role fx" data-fx="rise" data-at="700">IT Offshore Associate</p>
+        <p class="fx" data-fx="rise" data-at="900" style="margin-top:14px"><span class="badge mono">Now playing</span></p>
+        <div class="act-facts">
+          <p class="fx" data-fx="rise" data-at="1400">Global IT service desk under ITIL.</p>
+          <p class="muted fx" data-fx="rise" data-at="1500">ServiceNow · Microsoft Entra ID · Microsoft 365 · Intune / SCCM</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 · Credits -->
+    <section class="scene" hidden aria-label="Credits: selected projects">
+      <div class="scene-inner">
+        <div class="credits-wrap">
+          <div class="fx" data-fx="roll" data-at="0">
+            <h2 class="credits-head mono">Selected projects</h2>
+            <ul class="credits">
+              <li><span class="name">Replay</span><span class="what">Session replay with AI bug detection</span><span class="stack mono">TypeScript · React · Node.js · PostgreSQL</span></li>
+              <li><span class="name">CareerPilot AI</span><span class="what">AI job-search agent</span><span class="stack mono">React · TypeScript · Node · Prisma · PostgreSQL · Claude API</span></li>
+              <li><span class="name">Luna</span><span class="what">Multimodal AI chatbot</span><span class="stack mono">Python · Flask · GPT-4 · DALL·E</span></li>
+              <li><span class="name">YOLOv8 Soccer Player Tracker</span><span class="what">Real-time player tracking</span><span class="stack mono">Python · YOLOv8 · DeepSORT · OpenCV</span></li>
+            </ul>
+          </div>
+        </div>
+        <div class="credits-actions">
+          <div class="row">
+            <button type="button" class="btn btn-primary fx" data-fx="rise" data-at="2600" id="film-read">Read the full résumé</button>
+            <a class="btn btn-ghost fx" data-fx="rise" data-at="2700" href="mailto:vaibhavdhir01@gmail.com">Email me</a>
+          </div>
+          <p class="email-row fx" data-fx="rise" data-at="2800">
+            <span class="addr" id="email-addr">vaibhavdhir01@gmail.com</span>
+            <button type="button" class="btn btn-ghost btn-small" id="copy-email">Copy</button>
+            <span class="copy-status mono" id="copy-status" role="status"></span>
+          </p>
+          <!-- TODO: add "Download PDF" once a redacted PDF (no phone number) exists. -->
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="bar bar-bottom">
+    <div class="progress" role="group" aria-label="Acts">
+      <button type="button" class="seg" aria-label="Act I: VIT Chennai"><span class="track"><span class="fill"></span></span><span class="lbl mono" aria-hidden="true">I</span></button>
+      <button type="button" class="seg" aria-label="Act II: Vertex Info Soft"><span class="track"><span class="fill"></span></span><span class="lbl mono" aria-hidden="true">II</span></button>
+      <button type="button" class="seg" aria-label="Act III: Hapticware"><span class="track"><span class="fill"></span></span><span class="lbl mono" aria-hidden="true">III</span></button>
+      <button type="button" class="seg" aria-label="Act IV: HCLTech"><span class="track"><span class="fill"></span></span><span class="lbl mono" aria-hidden="true">IV</span></button>
+      <button type="button" class="seg" aria-label="Credits"><span class="track"><span class="fill"></span></span><span class="lbl mono" aria-hidden="true">Credits</span></button>
+    </div>
+    <div class="controls">
+      <span class="hint mono" aria-hidden="true">Space pause · ← → acts · Esc close</span>
+      <div class="group">
+        <button type="button" class="btn btn-ghost btn-icon" id="film-prev" aria-label="Previous" aria-keyshortcuts="ArrowLeft">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+        </button>
+        <button type="button" class="btn btn-ghost btn-play" id="film-toggle" aria-keyshortcuts="Space">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="ico-pause"><path d="M8 5.5v13M16 5.5v13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="ico-play" hidden><path d="M8.5 5.5v13a.75.75 0 0 0 1.14.64l10.4-6.5a.75.75 0 0 0 0-1.28L9.64 4.86A.75.75 0 0 0 8.5 5.5Z" fill="currentColor"/></svg>
+          <span class="lbl">Pause</span>
+        </button>
+        <button type="button" class="btn btn-ghost btn-icon" id="film-next" aria-label="Next" aria-keyshortcuts="ArrowRight">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <p class="sr-only" aria-live="polite" id="film-live"></p>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (s, r = document) => r.querySelector(s);
+  const film = $('#film');
+  const page = $('#page');
+  const trigger = $('#play-film');
+  const scenes = [...film.querySelectorAll('.scene')];
+  const segs = [...film.querySelectorAll('.seg')];
+  const fills = segs.map(s => $('.fill', s));
+  const toggleBtn = $('#film-toggle');
+  const live = $('#film-live');
+  const mq = matchMedia('(prefers-reduced-motion: reduce)');
+
+  // Scene durations (ms): title, Act I–IV, credits. 3 + 4×4 + 5 = 24 s.
+  const DUR = [3000, 4000, 4000, 4000, 4000, 5000];
+  const ANNOUNCE = [
+    'Vaibhav Dhir: a résumé in four acts',
+    'Act 1 of 4: VIT Chennai',
+    'Act 2 of 4: Vertex Info Soft',
+    'Act 3 of 4: Hapticware',
+    'Act 4 of 4: HCLTech',
+    'Credits: selected projects'
+  ];
+  const LAST = scenes.length - 1;
+  const EASE_CINE = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
+
+  let cur = -1, t = 0, playing = false, ended = false, open = false;
+  let anims = [], raf = 0, last = 0, closeTimer = 0;
+  const exiting = new Map();
+  let reduced = mq.matches;
+
+  trigger.hidden = false;
+
+  function buildAnims(scene) {
+    const list = [];
+    scene.querySelectorAll('.fx').forEach(el => {
+      const at = +el.dataset.at || 0;
+      const kind = el.dataset.fx;
+      let kf, opts;
+      if (kind === 'title') {
+        kf = [{ opacity: 0, transform: 'scale(1.04)' }, { opacity: 1, transform: 'scale(1)' }];
+        opts = { duration: 900, easing: EASE_CINE };
+      } else if (kind === 'roll') {
+        kf = [
+          { opacity: 0, transform: 'translateY(45%)', offset: 0 },
+          { opacity: 1, transform: 'translateY(30%)', offset: 0.2 },
+          { opacity: 1, transform: 'translateY(0)', offset: 1 }
+        ];
+        opts = { duration: 2600, easing: 'cubic-bezier(0.25, 0.6, 0.3, 1)' };
+      } else {
+        kf = [{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'translateY(0)' }];
+        opts = { duration: 300, easing: 'ease-out' };
+      }
+      list.push(el.animate(kf, Object.assign(opts, { delay: at, fill: 'backwards' })));
+    });
+    return list;
+  }
+
+  // Scene time when all reveals have settled.
+  function settleTime(scene) {
+    let end = 0;
+    scene.querySelectorAll('.fx, .count').forEach(el => {
+      const at = +el.dataset.at || 0;
+      const d = el.classList.contains('count') ? +el.dataset.dur :
+        el.dataset.fx === 'title' ? 900 : el.dataset.fx === 'roll' ? 2600 : 300;
+      end = Math.max(end, at + d);
+    });
+    return end;
+  }
+
+  function show(i, { settle = false } = {}) {
+    const prev = scenes[cur];
+    const next = scenes[i];
+    anims.forEach(a => a.cancel());
+    anims = [];
+    if (prev && prev !== next) {
+      const ex = prev.animate([{ opacity: 1 }, { opacity: 0 }], { duration: reduced ? 200 : 150, easing: 'ease-out' });
+      exiting.set(prev, ex);
+      ex.onfinish = () => { exiting.delete(prev); if (scenes[cur] !== prev) prev.hidden = true; };
+    }
+    const ex = exiting.get(next);
+    if (ex) { ex.cancel(); exiting.delete(next); }
+    cur = i;
+    t = 0;
+    ended = false;
+    next.hidden = false;
+    next.scrollTop = 0;
+    if (reduced) {
+      anims.push(next.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' }));
+    } else {
+      anims = buildAnims(next);
+      if (settle) {
+        anims.forEach(a => a.finish());
+        t = Math.min(settleTime(next), DUR[i] - 1200);
+      } else if (!playing) {
+        anims.forEach(a => a.pause());
+      }
+    }
+    live.textContent = ANNOUNCE[i];
+    segs.forEach((s, k) => {
+      if (k === segIndex(i)) s.setAttribute('aria-current', 'step'); else s.removeAttribute('aria-current');
+    });
+    updateToggle();
+    render();
+  }
+
+  function segIndex(i) { return i === 0 ? 0 : i - 1; }
+
+  function go(i, fromUser) {
+    if (i < 0 || i > LAST) return;
+    show(i, { settle: fromUser && !playing });
+  }
+
+  function setPlaying(p) {
+    if (ended && p) { playing = true; film.classList.remove('is-paused'); show(0); return; }
+    playing = p;
+    film.classList.toggle('is-paused', !p);
+    anims.forEach(a => {
+      if (p) { if (a.playState === 'paused') a.play(); }
+      else if (a.playState === 'running') a.pause();
+    });
+    updateToggle();
+  }
+
+  function updateToggle() {
+    const label = ended ? 'Replay' : playing ? 'Pause' : 'Play';
+    $('.lbl', toggleBtn).textContent = label;
+    // SVG elements have no .hidden property; toggle the attribute.
+    $('.ico-pause', toggleBtn).toggleAttribute('hidden', !(playing && !ended));
+    $('.ico-play', toggleBtn).toggleAttribute('hidden', playing && !ended);
+  }
+
+  function finish() {
+    playing = false;
+    ended = true;
+    film.classList.add('is-paused');
+    t = DUR[cur];
+    updateToggle();
+  }
+
+  const easeOut = x => 1 - Math.pow(1 - x, 3);
+
+  function render() {
+    const scene = scenes[cur];
+    if (!scene) return;
+    scene.querySelectorAll('.count').forEach(el => {
+      const to = +el.dataset.to;
+      let v = to;
+      if (!reduced) {
+        const p = Math.min(1, Math.max(0, (t - +el.dataset.at) / +el.dataset.dur));
+        v = Math.round(to * easeOut(p));
+      }
+      if (el.textContent !== String(v)) el.textContent = v;
+    });
+    const s = segIndex(cur);
+    fills.forEach((f, k) => {
+      let frac;
+      if (k < s) frac = 1;
+      else if (k > s) frac = 0;
+      else if (cur <= 1) frac = ((cur === 1 ? DUR[0] : 0) + t) / (DUR[0] + DUR[1]);
+      else frac = t / DUR[cur];
+      f.style.transform = 'scaleX(' + Math.min(1, Math.max(0, frac)).toFixed(4) + ')';
+    });
+  }
+
+  function tick(now) {
+    raf = requestAnimationFrame(tick);
+    const dt = Math.min(100, now - last);
+    last = now;
+    if (playing && !ended) {
+      t += dt;
+      if (t >= DUR[cur]) {
+        if (cur < LAST) show(cur + 1);
+        else finish();
+      }
+    }
+    render();
+  }
+
+  function openFilm() {
+    if (open) return;
+    open = true;
+    clearTimeout(closeTimer);
+    reduced = mq.matches;
+    film.classList.remove('is-closing', 'is-open');
+    film.hidden = false;
+    page.inert = true;
+    document.documentElement.style.overflow = 'hidden';
+    // Reduced motion: open on the title card, paused. Nothing advances until Play.
+    playing = !reduced;
+    film.classList.toggle('is-paused', !playing);
+    cur = -1;
+    scenes.forEach(s => { s.hidden = true; });
+    show(0);
+    void film.offsetWidth;
+    film.classList.add('is-open');
+    film.focus();
+    last = performance.now();
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(tick);
+  }
+
+  function closeFilm(toResume) {
+    if (!open) return;
+    open = false;
+    playing = false;
+    cancelAnimationFrame(raf);
+    anims.forEach(a => a.pause());
+    film.classList.add('is-closing');
+    film.classList.remove('is-open');
+    page.inert = false;
+    document.documentElement.style.overflow = '';
+    closeTimer = setTimeout(() => {
+      film.hidden = true;
+      film.classList.remove('is-closing');
+      anims.forEach(a => a.cancel());
+      anims = [];
+      scenes.forEach(s => { s.hidden = true; });
+      live.textContent = '';
+    }, reduced ? 220 : 170);
+    if (toResume) {
+      const target = $('#resume');
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: 'start', behavior: 'auto' });
+    } else {
+      trigger.focus();
+    }
+  }
+
+  function focusables() {
+    return [...film.querySelectorAll('button, a[href]')].filter(el => !el.closest('[hidden]') && el.getClientRects().length);
+  }
+
+  film.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.preventDefault(); closeFilm(false); return; }
+    if (e.key === 'ArrowRight') { e.preventDefault(); go(cur + 1, true); return; }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); go(cur - 1, true); return; }
+    if ((e.key === ' ' || e.key === 'Spacebar') && !e.target.closest('button, a')) {
+      e.preventDefault(); setPlaying(!playing || ended); return;
+    }
+    if (e.key === 'Tab') {
+      const f = focusables();
+      if (!f.length) return;
+      const first = f[0], lastEl = f[f.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || active === film)) { e.preventDefault(); lastEl.focus(); }
+      else if (!e.shiftKey && active === lastEl) { e.preventDefault(); first.focus(); }
+      else if (!film.contains(active)) { e.preventDefault(); first.focus(); }
+    }
+  });
+
+  trigger.addEventListener('click', openFilm);
+  $('#film-close').addEventListener('click', () => closeFilm(false));
+  $('#film-read').addEventListener('click', () => closeFilm(true));
+  toggleBtn.addEventListener('click', () => setPlaying(!playing || ended));
+  $('#film-prev').addEventListener('click', () => go(cur - 1, true));
+  $('#film-next').addEventListener('click', () => go(cur + 1, true));
+  segs.forEach((s, k) => s.addEventListener('click', () => go(k + 1, true)));
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && open && playing) setPlaying(false);
+  });
+  mq.addEventListener && mq.addEventListener('change', e => { reduced = e.matches; });
+
+  // Copy email: clipboard API, then a selection fallback.
+  const status = $('#copy-status');
+  $('#copy-email').addEventListener('click', async () => {
+    const addr = $('#email-addr').textContent.trim();
+    let ok = false;
+    try { await navigator.clipboard.writeText(addr); ok = true; } catch (_) {
+      try {
+        const r = document.createRange();
+        r.selectNodeContents($('#email-addr'));
+        const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        ok = document.execCommand('copy');
+      } catch (_) { ok = false; }
+    }
+    status.textContent = ok ? 'Copied' : 'Selected, press Ctrl+C';
+    setTimeout(() => { status.textContent = ''; }, 2500);
+  });
+})();
+</script>
+</body>
+</html>
