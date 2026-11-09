@@ -1,0 +1,44 @@
+/* Glossy Black: the shared look for every demo (replaces the old off-white + ember palette,
+   which read too close to Anthropic's own colors). Each demo inlines these tokens (artifacts
+   cannot load local CSS from another file), so keep copies in sync with this file.
+
+   Contrast, measured (WCAG 2.x) on #000 / #0d0d0f / #161618:
+     --fg   #f5f5f7  19.3 / 17.8 / 16.6
+     --fg-2 #a1a1a6   8.2 /  7.6 /  7.0
+     --fg-3 #86868b   5.8 /  5.4 /  5.0   (small labels)
+     --accent #8ab4ff 10.1 / 9.3 / 8.7    #000 on --accent 10.1
+*/
+:root {
+  color-scheme: dark;
+  --bg: #000;                       /* true black page */
+  --surface: #0d0d0f;               /* glass card base */
+  --surface-2: #161618;             /* raised / top of the card gradient */
+  --fg: #f5f5f7;
+  --fg-2: #a1a1a6;
+  --fg-3: #86868b;
+  --accent: #8ab4ff;                /* ice blue: the one accent (links, active, progress, dots) */
+  --on-accent: #000;
+  --hairline: rgb(255 255 255 / 0.08);
+  --hairline-2: rgb(255 255 255 / 0.16);
+
+  /* Gloss recipes (static; never animated) */
+  --glare: radial-gradient(120% 60% at 50% -10%, rgb(255 255 255 / 0.07), transparent 60%);
+  --glass: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 55%, #070708 100%);
+  --glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.10), inset 0 0 0 1px rgb(255 255 255 / 0.06),
+                0 30px 60px -30px rgb(0 0 0 / 0.9);
+  --sheen: linear-gradient(115deg, rgb(255 255 255 / 0.07) 0%, rgb(255 255 255 / 0) 38%);
+  --chrome: linear-gradient(180deg, #ffffff 0%, #e6e6ea 45%, #9a9aa2 100%); /* big display text via background-clip */
+
+  --font-display: "Inter Tight", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Usage notes
+   body { background: var(--bg) var(--glare) no-repeat; }  -- studio glare at the top
+   .card { background: var(--sheen), var(--glass); box-shadow: var(--glass-edge); border-radius: 24px; }
+   .chrome { background: var(--chrome); -webkit-background-clip: text; background-clip: text; color: transparent; }
+     (keep a solid `color: var(--fg)` fallback via @supports not (background-clip: text))
+   Primary button: background #f5f5f7, color #000 (glossy white pill) with inset top highlight;
+   secondary: glass pill (--glass + --glass-edge). Accent only for small active states, not big fills. */
