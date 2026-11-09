@@ -1,0 +1,964 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Obsidian Hero</title>
+<meta name="description" content="Hero demo for Vaibhav Dhir: a glitter vortex collapses into a liquid obsidian sphere, on a glossy black page.">
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@800&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400&display=swap">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+  }
+}
+</script>
+<script>
+  /* Runs before first paint: decides whether the intro overlay is shown, so it never flashes.
+     JS off: no class, no overlay. Reduced motion: no overlay. Seen this session: no overlay
+     (?t=… forces it for frame captures). */
+  (function () {
+    var root = document.documentElement;
+    root.classList.add("js");
+    var q = new URLSearchParams(location.search);
+    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var seen = false;
+    try { seen = sessionStorage.getItem("vd-obsidian-intro") === "1"; } catch (e) {}
+    if (reduce) root.classList.add("rm");
+    if (!reduce && (!seen || q.has("t"))) root.classList.add("intro");
+  })();
+</script>
+<style>
+  /* Tokens inlined from prototypes/demos/glossy-black.css (keep in sync). Dark-only page by design. */
+  :root,
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #000;
+    --surface: #0d0d0f;
+    --surface-2: #161618;
+    --fg: #f5f5f7;            /* 19.3:1 on #000 */
+    --fg-2: #a1a1a6;          /*  8.2:1 */
+    --fg-3: #86868b;          /*  5.8:1 (small labels) */
+    --accent: #8ab4ff;        /* 10.1:1 */
+    --on-accent: #000;
+    --hairline: rgb(255 255 255 / 0.08);
+    --hairline-2: rgb(255 255 255 / 0.16);
+    --glare: radial-gradient(120% 60% at 50% -10%, rgb(255 255 255 / 0.07), transparent 60%);
+    --glass: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 55%, #070708 100%);
+    --glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.10), inset 0 0 0 1px rgb(255 255 255 / 0.06),
+                  0 30px 60px -30px rgb(0 0 0 / 0.9);
+    --sheen: linear-gradient(115deg, rgb(255 255 255 / 0.07) 0%, rgb(255 255 255 / 0) 38%);
+    --chrome: linear-gradient(180deg, #ffffff 0%, #e6e6ea 45%, #9a9aa2 100%);
+    --font-display: "Inter Tight", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    --ease-out: cubic-bezier(0.2, 0, 0, 1);
+    --gutter: clamp(16px, 5vw, 80px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #000; --fg: #f5f5f7; }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  * { margin: 0; }
+  html { background: var(--bg); color: var(--fg); -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg) var(--glare) no-repeat;
+    color: var(--fg);
+    font: 400 1rem/1.6 var(--font-body);
+    min-height: 100svh;
+    overflow-x: clip;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 999px; }
+  .js-only { display: none !important; }
+  .mono { font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* ---------- Top bar ---------- */
+  .bar {
+    position: absolute; inset: 0 0 auto 0; z-index: 3;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 16px var(--gutter);
+  }
+  .brand { font-size: 0.75rem; color: var(--fg-2); }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .js .controls .js-only { display: inline-flex !important; }
+  .rm .controls .needs-motion { display: none !important; }
+  :root:not(.gl-live) .controls .needs-gl { display: none !important; }
+
+  /* ---------- Pills / buttons ---------- */
+  .pill, .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; cursor: pointer;
+    text-decoration: none; white-space: nowrap;
+    transition: transform 150ms ease-out, opacity 150ms ease-out;
+  }
+  .pill {
+    font: 400 0.75rem/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--fg); background: var(--sheen), var(--glass); box-shadow: var(--glass-edge);
+  }
+  .btn { min-height: 48px; padding: 0 24px; font: 500 1rem/1 var(--font-body); }
+  .btn-primary {
+    color: #000;
+    background: linear-gradient(180deg, #ffffff 0%, #f5f5f7 55%, #dcdce1 100%);
+    box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 rgb(0 0 0 / 0.12), 0 12px 30px -12px rgb(255 255 255 / 0.25);
+  }
+  .btn-glass { color: var(--fg); background: var(--sheen), var(--glass); box-shadow: var(--glass-edge); }
+  .pill:active, .btn:active { transform: scale(0.96); }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    position: relative;
+    min-height: 100svh;
+    overflow-x: clip;
+    background: var(--bg) var(--glare) no-repeat;
+  }
+  .gl {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    z-index: 0; pointer-events: none; display: block;
+  }
+  .intro-run .gl { z-index: 60; }     /* above the intro overlay while the intro plays */
+  .intro-flat .stage { z-index: 60; } /* poster path: the drawn sphere fades in above the overlay */
+  .hero-inner {
+    position: relative; /* no z-index: a stacking context here would isolate the sweep's blend */
+    min-height: 100svh;
+    display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    align-items: center; gap: clamp(24px, 4vw, 64px);
+    padding: 96px var(--gutter) 64px;
+    max-width: 1440px; margin: 0 auto;
+  }
+  .copy { max-width: 40rem; }
+  .status {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 0.75rem; color: var(--fg-2); margin-bottom: 24px;
+  }
+  .status .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex: none;
+    background: var(--accent); box-shadow: 0 0 0 4px rgb(138 180 255 / 0.14);
+  }
+  .name-wrap { position: relative; margin: 0 -0.04em; }
+  h1, .sweep-text {
+    font: 800 clamp(2.75rem, 7.4vw, 6.75rem)/0.98 var(--font-display);
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+    padding: 0.04em 0.04em 0.08em;
+    color: var(--fg);
+  }
+  @supports (background-clip: text) or (-webkit-background-clip: text) {
+    h1 {
+      background: var(--chrome);
+      -webkit-background-clip: text; background-clip: text;
+      color: transparent;
+    }
+  }
+  h1:focus, h1:focus-visible { outline: none; } /* programmatic focus target only (tabindex=-1) */
+  /* Light sweep: a soft-edged window slides right while a bright copy of the name inside it
+     slides left by the same amount, so the light stays on the glyphs. Transform/opacity only. */
+  .sweep {
+    position: absolute; inset: 0 auto 0 0; width: 38%; overflow: hidden;
+    pointer-events: none; opacity: 0;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 45%, #000 55%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 45%, #000 55%, transparent 100%);
+    will-change: transform, opacity;
+  }
+  .sweep-text {
+    position: absolute; top: 0; left: 0; margin: 0;
+    color: #fff; background: none;
+    text-shadow: 0 0 14px rgb(255 255 255 / 0.55), 0 0 40px rgb(138 180 255 / 0.45);
+    will-change: transform;
+  }
+  .tagline {
+    margin-top: 24px; max-width: 34rem;
+    font-size: clamp(1.0625rem, 1.4vw, 1.25rem); line-height: 1.6; color: var(--fg-2);
+    text-wrap: pretty;
+  }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+
+  .stage {
+    position: relative; justify-self: center;
+    width: min(100%, 620px); aspect-ratio: 1 / 1;
+  }
+  .poster { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity 400ms ease-out; }
+  .intro-flat .poster { transition: none; }
+  .gl-live .stage .poster { opacity: 0; }
+
+  @media (max-width: 899px) {
+    .hero-inner {
+      grid-template-columns: minmax(0, 1fr); align-content: center; gap: 8px;
+      padding-top: 80px; padding-bottom: 48px;
+    }
+    .stage { order: -1; width: min(76vw, 340px); }
+    .copy { max-width: none; }
+  }
+  @media (max-width: 380px) {
+    .bar { padding-top: 12px; }
+    .pill { padding: 0 14px; }
+    .brand { display: none; }
+  }
+
+  /* ---------- Below the fold ---------- */
+  .section { max-width: 1440px; margin: 0 auto; padding: 96px var(--gutter); border-top: 1px solid var(--hairline); }
+  .section h2 { font: 800 clamp(1.75rem, 3.5vw, 2.5rem)/1.1 var(--font-display); letter-spacing: -0.02em; text-wrap: balance; }
+  .kicker { font-size: 0.75rem; color: var(--fg-3); margin-bottom: 12px; }
+  .card {
+    margin-top: 24px; padding: 24px; border-radius: 24px; max-width: 42rem;
+    background: var(--sheen), var(--glass); box-shadow: var(--glass-edge);
+  }
+  .todo {
+    display: inline-block; font: 400 0.8125rem/1.5 var(--font-mono); color: var(--fg-2);
+    border: 1px dashed var(--hairline-2); border-radius: 8px; padding: 4px 10px;
+  }
+  .card p + p { margin-top: 12px; }
+  .projects { list-style: none; padding: 0; margin-top: 8px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+  .projects .card { margin-top: 0; max-width: none; }
+  .projects h3 { font: 800 1.375rem/1.15 var(--font-display); letter-spacing: -0.02em; margin-bottom: 8px; }
+  .projects p { color: var(--fg-2); }
+  .projects .stack { font-size: 0.75rem; color: var(--fg-3); margin-top: 12px; }
+  .card a { color: var(--accent); text-underline-offset: 3px; }
+  .notes { margin-top: 16px; padding-left: 1.2em; color: var(--fg-2); max-width: 65ch; }
+  .notes li + li { margin-top: 8px; }
+  .notes code { font-family: var(--font-mono); font-size: 0.875em; color: var(--fg); }
+  footer { padding: 32px var(--gutter) 48px; color: var(--fg-3); font-size: 0.8125rem; max-width: 1440px; margin: 0 auto; }
+
+  /* ---------- Intro overlay ---------- */
+  .loader, .loader-ui { display: none; }
+  .intro .loader {
+    display: block; position: fixed; inset: 0; z-index: 50; background: #000;
+    will-change: opacity, transform;
+  }
+  .intro .loader-ui { display: block; position: fixed; inset: 0; z-index: 70; pointer-events: none; }
+  .loader-ui .skip { position: absolute; top: 16px; right: var(--gutter); pointer-events: auto; }
+  .loader-ui .meter {
+    position: absolute; left: var(--gutter); bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    width: min(240px, 50vw);
+  }
+  .count { font: 400 0.75rem/1 var(--font-mono); letter-spacing: 0.08em; color: var(--fg-2); font-variant-numeric: tabular-nums; }
+  .line { margin-top: 10px; height: 1px; background: var(--hairline-2); overflow: hidden; }
+  .line i { display: block; height: 100%; background: var(--fg); transform-origin: 0 50%; transform: scaleX(0); }
+  .loader.is-exiting, .loader-ui.is-exiting { opacity: 0 !important; transition: opacity 150ms ease-out; }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+</style>
+</head>
+<body>
+<div class="loader-ui" id="loader-ui">
+  <button type="button" class="pill skip" id="skip">Skip intro</button>
+  <div class="meter" aria-hidden="true">
+    <div class="count" id="count">000</div>
+    <div class="line"><i id="line"></i></div>
+  </div>
+</div>
+<main>
+  <section class="hero" id="top" aria-labelledby="name">
+    <header class="bar">
+      <span class="brand mono">VD / Obsidian</span>
+      <div class="controls">
+        <button type="button" class="pill js-only needs-motion" id="replay">Replay intro</button>
+        <button type="button" class="pill js-only needs-gl" id="pause">Pause motion</button>
+      </div>
+    </header>
+
+    <div class="hero-inner">
+      <div class="copy">
+        <p class="status mono"><span class="dot" aria-hidden="true"></span>Open to Forward Deployed &amp; Solutions Engineering roles</p>
+        <div class="name-wrap">
+          <h1 id="name" tabindex="-1">Vaibhav Dhir</h1>
+          <span class="sweep" aria-hidden="true"><span class="sweep-text">Vaibhav Dhir</span></span>
+        </div>
+        <p class="tagline">I build AI systems that ship, then sit with the people using them until they work.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#work">See my work</a>
+          <a class="btn btn-glass" href="#contact">Get in touch</a>
+        </div>
+      </div>
+
+      <div class="stage" aria-hidden="true">
+        <!-- Poster: the no-WebGL / reduced-motion / JS-off sphere. Pure SVG gradients, no images. -->
+        <svg class="poster" viewBox="0 0 600 600" focusable="false">
+          <defs>
+            <radialGradient id="pBody" cx="38%" cy="30%" r="75%">
+              <stop offset="0" stop-color="#17181c"/>
+              <stop offset="0.3" stop-color="#060607"/>
+              <stop offset="0.7" stop-color="#020203"/>
+              <stop offset="1" stop-color="#000"/>
+            </radialGradient>
+            <radialGradient id="pRim" cx="50%" cy="50%" r="50%">
+              <stop offset="0.86" stop-color="#8ab4ff" stop-opacity="0"/>
+              <stop offset="0.97" stop-color="#8ab4ff" stop-opacity="0.32"/>
+              <stop offset="1" stop-color="#8ab4ff" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="pRimMask" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0.45" stop-color="#fff" stop-opacity="0"/>
+              <stop offset="1" stop-color="#fff" stop-opacity="1"/>
+            </linearGradient>
+            <mask id="pRimM"><rect width="600" height="600" fill="url(#pRimMask)"/></mask>
+            <radialGradient id="pSpec" cx="50%" cy="50%" r="50%">
+              <stop offset="0" stop-color="#fff" stop-opacity="0.95"/>
+              <stop offset="0.35" stop-color="#fff" stop-opacity="0.35"/>
+              <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="pHot" cx="50%" cy="50%" r="50%">
+              <stop offset="0" stop-color="#fff" stop-opacity="1"/>
+              <stop offset="0.5" stop-color="#f4f6fa" stop-opacity="0.85"/>
+              <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="pIce" cx="50%" cy="50%" r="50%">
+              <stop offset="0" stop-color="#b9d0ff" stop-opacity="0.95"/>
+              <stop offset="1" stop-color="#8ab4ff" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="pBox" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#fff" stop-opacity="0.34"/>
+              <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="pBox2" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+              <stop offset="0.5" stop-color="#fff" stop-opacity="0.12"/>
+              <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+            </linearGradient>
+            <radialGradient id="pFloor" cx="50%" cy="50%" r="50%">
+              <stop offset="0" stop-color="#000" stop-opacity="1"/>
+              <stop offset="0.45" stop-color="#9aa6bb" stop-opacity="0.10"/>
+              <stop offset="1" stop-color="#9aa6bb" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="pRefl" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#1a1b20" stop-opacity="0.6"/>
+              <stop offset="0.5" stop-color="#000" stop-opacity="0"/>
+            </linearGradient>
+            <clipPath id="pClip"><circle cx="300" cy="270" r="210"/></clipPath>
+          </defs>
+          <ellipse cx="300" cy="500" rx="260" ry="34" fill="url(#pFloor)"/>
+          <ellipse cx="300" cy="560" rx="170" ry="58" fill="url(#pRefl)"/>
+          <circle cx="300" cy="270" r="210" fill="url(#pBody)"/>
+          <g clip-path="url(#pClip)">
+            <rect x="176" y="100" width="120" height="34" rx="17" fill="url(#pBox)" opacity="0.7" transform="rotate(-24 236 117)"/>
+            <path d="M384 94 q58 22 88 70" stroke="#fff" stroke-opacity="0.32" stroke-width="12" stroke-linecap="round" fill="none"/>
+            <ellipse cx="300" cy="104" rx="30" ry="9" fill="url(#pSpec)" opacity="0.8"/>
+            <ellipse cx="268" cy="214" rx="22" ry="26" fill="url(#pHot)"/>
+            <ellipse cx="358" cy="190" rx="16" ry="13" fill="url(#pHot)" opacity="0.8"/>
+            <ellipse cx="400" cy="204" rx="17" ry="19" fill="url(#pHot)" opacity="0.85" transform="rotate(20 400 204)"/>
+            <ellipse cx="122" cy="232" rx="9" ry="24" fill="url(#pIce)"/>
+            <rect x="120" y="380" width="360" height="14" rx="7" fill="url(#pBox2)" opacity="0.6" transform="rotate(-6 300 387)"/>
+          </g>
+          <circle cx="300" cy="270" r="210" fill="url(#pRim)" mask="url(#pRimM)"/>
+          <circle cx="300" cy="270" r="209.5" fill="none" stroke="#fff" stroke-opacity="0.07"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="work" aria-labelledby="work-h">
+    <p class="kicker mono">Selected work</p>
+    <h2 id="work-h">Projects</h2>
+    <ul class="projects">
+      <li class="card"><h3>Replay</h3><p>Session replay with AI that flags where users got stuck.</p><p class="stack mono">TypeScript · React · Node.js · PostgreSQL</p></li>
+      <li class="card"><h3>CareerPilot AI</h3><p>An AI agent that runs a job search end to end, from job description to tracked application.</p><p class="stack mono">React · TypeScript · Node.js · Prisma · Claude API</p></li>
+      <li class="card"><h3>Luna</h3><p>A multimodal chatbot that generates text and images with GPT-4 and DALL·E.</p><p class="stack mono">Python · Flask · OpenAI API</p></li>
+      <li class="card"><h3>Soccer Player Tracker</h3><p>Real-time tracking of players, referees and the ball, holding identities through occlusions.</p><p class="stack mono">Python · YOLOv8 · DeepSORT · OpenCV</p></li>
+    </ul>
+  </section>
+
+  <section class="section" id="contact" aria-labelledby="contact-h">
+    <p class="kicker mono">Contact</p>
+    <h2 id="contact-h">Get in touch</h2>
+    <div class="card">
+      <p>GitHub: <a href="https://github.com/Vd421">github.com/Vd421</a></p>
+      <p>Email: <a href="mailto:vaibhavdhir01@gmail.com">vaibhavdhir01@gmail.com</a></p>
+      <p>LinkedIn: <a href="https://www.linkedin.com/in/vaibhav-dhir">linkedin.com/in/vaibhav-dhir</a></p>
+    </div>
+  </section>
+
+</main>
+<footer>Original art. No images, no external models: the sphere and the glitter are generated in code.</footer>
+
+<div class="loader" id="loader" aria-hidden="true"></div>
+
+
+<script type="module">
+const root = document.documentElement;
+const $ = (s) => document.querySelector(s);
+const params = new URLSearchParams(location.search);
+const FREEZE = params.has("t") ? Math.max(0, parseFloat(params.get("t")) || 0) : null;
+const ANYGL = params.has("anygl");
+const KEY = "vd-obsidian-intro";
+const mqReduce = matchMedia("(prefers-reduced-motion: reduce)");
+const hero = $("#top"), stage = $(".stage"), poster = $(".poster"), nameEl = $("#name"), sweep = $(".sweep"), sweepText = $(".sweep-text");
+const loader = $("#loader"), loaderUI = $("#loader-ui"), countEl = $("#count"), lineEl = $("#line");
+const pauseBtn = $("#pause"), replayBtn = $("#replay"), skipBtn = $("#skip");
+
+const clamp01 = (x) => Math.min(1, Math.max(0, x));
+const easeOut3 = (x) => 1 - Math.pow(1 - x, 3);
+const easeInOut3 = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+
+/* ---------- Capability gate (cheap, before downloading three) ---------- */
+function gate() {
+  if (mqReduce.matches) return { ok: false, why: "reduced-motion" };
+  const fine = matchMedia("(pointer: fine)").matches;
+  if (!(fine || innerWidth >= 900)) return { ok: false, why: "small-touch" };
+  let gl = null;
+  try {
+    const c = document.createElement("canvas");
+    gl = c.getContext("webgl2", { failIfMajorPerformanceCaveat: !ANYGL });
+  } catch (e) { gl = null; }
+  if (!gl) return { ok: false, why: ANYGL ? "no-webgl2" : "no-webgl2-or-software-gpu" };
+  // Some browsers don't flag software rasterisers as a "major performance caveat": check the name too.
+  const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+  const gpu = String(dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+  gl.getExtension("WEBGL_lose_context")?.loseContext();
+  if (!ANYGL && /swiftshader|llvmpipe|softpipe|software|microsoft basic render/i.test(gpu)) return { ok: false, why: "software-gpu" };
+  const lite = !fine || innerWidth < 900 || (navigator.hardwareConcurrency || 8) <= 4;
+  return { ok: true, lite };
+}
+const cap = gate();
+const state = (window.__obsidian = { path: cap.ok ? "3d-pending" : "poster", reason: cap.why || null, gl: null });
+
+/* ---------- Single frame scheduler ---------- */
+let raf = 0;
+function wake() { if (!raf) raf = requestAnimationFrame(tick); }
+function tick(now) {
+  raf = 0;
+  let more = false;
+  if (intro.active) more = updateIntro(now) || more;
+  if (gl && gl.canRender()) more = gl.frame(now) || more;
+  if (more) wake();
+}
+
+/* ---------- Intro ---------- */
+const TL = {
+  gl:   { count: 3.0, lift: 3.0, sweep: 3.25, end: 4.2 },
+  flat: { count: 1.5, lift: 1.5, sweep: 1.75, end: 2.7 },
+};
+const intro = { active: false, mode: null, start: 0, preStart: 0, pre: 0, frozen: false, exiting: false };
+let gl = null;
+
+function setCount(pct) {
+  const v = Math.round(pct);
+  countEl.textContent = String(v).padStart(3, "0");
+  lineEl.style.transform = `scaleX(${v / 100})`;
+}
+
+function startIntro() {
+  intro.active = true; intro.exiting = false; intro.frozen = false;
+  intro.mode = cap.ok ? (gl ? "gl" : "pre") : "flat";
+  root.classList.toggle("intro-flat", intro.mode === "flat");
+  intro.preStart = intro.start = performance.now();
+  intro.pre = 0;
+  root.classList.add("intro", "intro-run");
+  loader.classList.remove("is-exiting"); loaderUI.classList.remove("is-exiting");
+  loader.style.opacity = "1"; loader.style.transform = "none"; loaderUI.style.opacity = "1";
+  sweep.style.opacity = "0";
+  setCount(0);
+  scrollTo(0, 0);
+  if (gl) gl.setIntro(0);
+  wake();
+}
+
+function beginTimeline(mode) {
+  intro.mode = mode;
+  root.classList.toggle("intro-flat", mode === "flat");
+  intro.start = performance.now();
+}
+
+function updateIntro(now) {
+  if (intro.exiting) return false;
+  if (intro.mode === "pre") {
+    const e = (now - intro.preStart) / 1000;
+    intro.pre = 22 * (1 - Math.exp(-e / 0.9));
+    setCount(intro.pre);
+    if (e > 3.0) beginTimeline("flat");     // three is slow to arrive: finish without the 3D intro
+    return true;
+  }
+  const tl = TL[intro.mode];
+  const t = FREEZE != null ? Math.min(FREEZE, tl.end) : (now - intro.start) / 1000;
+  const c = clamp01(t / tl.count);
+  setCount(intro.pre + (100 - intro.pre) * (1 - (1 - c) * (1 - c)));
+  const lift = easeInOut3(clamp01((t - tl.lift) / 0.6));
+  loader.style.opacity = String(1 - lift);
+  loader.style.transform = `translateY(${-16 * lift}px)`;
+  loaderUI.style.opacity = String(1 - clamp01((t - tl.lift + 0.1) / 0.3));
+  const s = clamp01((t - tl.sweep) / 0.9);
+  const w = nameEl.offsetWidth, x = -0.38 * w + s * 1.38 * w;
+  sweepText.style.width = w + "px";
+  sweep.style.transform = `translateX(${x}px)`;
+  sweepText.style.transform = `translateX(${-x}px)`;
+  sweep.style.opacity = s > 0 && s < 1 ? String(Math.sin(Math.PI * s)) : "0";
+  if (gl && intro.mode === "gl") gl.setIntro(t);
+  if (intro.mode === "flat" && gl) poster.style.opacity = poster.style.transform = "";
+  else if (intro.mode === "flat") {
+    const a = easeOut3(clamp01((t - 0.1) / 1.1));
+    poster.style.opacity = String(a);
+    poster.style.transform = `scale(${0.94 + 0.06 * a})`;
+  }
+  if (FREEZE != null) { intro.frozen = true; return false; }
+  if (t >= tl.end) { finishIntro(); return false; }
+  return true;
+}
+
+function finishIntro() {
+  intro.active = false; intro.exiting = false;
+  root.classList.remove("intro", "intro-run", "intro-flat");
+  poster.style.opacity = poster.style.transform = "";
+  sweep.style.opacity = "0";
+  sweep.style.transform = sweepText.style.transform = "";
+  try { sessionStorage.setItem(KEY, "1"); } catch (e) {}
+  if (gl) gl.setIntro(null);
+  const ae = document.activeElement;
+  if (ae === skipBtn || (intro.skippedByKey && (!ae || ae === document.body))) nameEl.focus({ preventScroll: true });
+  intro.skippedByKey = false;
+  wake();
+}
+
+function skipIntro(byKey) {
+  if (!intro.active || intro.exiting || intro.frozen) return;
+  intro.exiting = true;
+  intro.skippedByKey = !!byKey;
+  const hadFocus = document.activeElement === skipBtn;
+  if (gl) gl.setIntro(null);
+  loader.classList.add("is-exiting"); loaderUI.classList.add("is-exiting");
+  sweep.style.opacity = "0";
+  setTimeout(() => {
+    if (hadFocus) nameEl.focus({ preventScroll: true });
+    finishIntro();
+  }, 150);
+  wake();
+}
+
+skipBtn.addEventListener("click", () => skipIntro(false));
+document.addEventListener("keydown", (e) => {
+  if (!intro.active) return;
+  if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
+    if (e.key === " ") e.preventDefault();
+    skipIntro(true);
+  }
+});
+hero.addEventListener("focusin", () => { if (intro.active) skipIntro(true); });
+replayBtn.addEventListener("click", () => { if (!mqReduce.matches) startIntro(); });
+
+if (root.classList.contains("intro")) startIntro();
+
+/* ---------- Pause control (WCAG 2.2.2) ---------- */
+let paused = false;
+pauseBtn.addEventListener("click", () => {
+  paused = !paused;
+  pauseBtn.textContent = paused ? "Resume motion" : "Pause motion";
+  gl?.setPaused(paused);
+  wake();
+});
+mqReduce.addEventListener?.("change", (e) => { if (e.matches && gl) { paused = true; gl.setPaused(true); pauseBtn.textContent = "Resume motion"; } });
+
+/* ---------- 3D, loaded after first paint ---------- */
+if (cap.ok) {
+  const go = () => initGL(cap.lite).then((api) => {
+    if (!api) { state.path = "poster"; state.reason = "renderer-failed"; if (intro.mode === "pre") beginTimeline("flat"); return; }
+    gl = api; state.gl = api.info; state.path = "3d";
+    root.classList.add("gl-live");
+    if (intro.active && intro.mode === "pre") { beginTimeline("gl"); gl.setIntro(0); }
+    else gl.setIntro(intro.active && intro.mode === "gl" ? 0 : null);
+    wake();
+  }).catch((err) => {
+    console.warn("[obsidian] 3D unavailable, keeping the poster:", err && err.message);
+    state.path = "poster"; state.reason = "load-failed";
+    if (intro.mode === "pre") beginTimeline("flat");
+  });
+  requestAnimationFrame(() => setTimeout(go, 0));
+}
+
+async function initGL(lite) {
+  const THREE = await import("three");
+  const { RoomEnvironment } = await import("three/addons/environments/RoomEnvironment.js");
+
+  const canvas = document.createElement("canvas");
+  canvas.className = "gl";
+  canvas.setAttribute("aria-hidden", "true");
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({
+      canvas, antialias: true, alpha: true, powerPreference: "high-performance",
+      failIfMajorPerformanceCaveat: !ANYGL,
+    });
+  } catch (e) { return null; }
+  const maxDpr = lite ? 1.5 : 2;
+  let dpr = Math.min(devicePixelRatio || 1, maxDpr);
+  renderer.setPixelRatio(dpr);
+  renderer.setClearColor(0x000000, 0);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+
+  const scene = new THREE.Scene();
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  // RoomEnvironment with its walls and props blacked out: only the softbox panels remain,
+  // which gives crisp studio strips on true black instead of a grey room reflection.
+  const room = new RoomEnvironment();
+  room.traverse((o) => { if (o.isMesh && o.material && o.material.isMeshStandardMaterial) o.material.color.setScalar(0.05); });
+  const envRT = pmrem.fromScene(room, 0.02);
+  room.dispose();
+  scene.environment = envRT.texture;
+  scene.environmentIntensity = 1.0;
+  scene.environmentRotation.set(0.15, -0.6, 0);
+  pmrem.dispose();
+
+  const FOV = 30, DIST = 7;
+  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
+  camera.position.set(0, 0, DIST);
+
+  const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(3, 4, 5);
+  const rim = new THREE.DirectionalLight(0x8ab4ff, 1.2); rim.position.set(-4, 1.2, -3);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.25); fill.position.set(-3, -1, 4);
+  scene.add(key, rim, fill);
+
+  /* ----- Liquid obsidian material ----- */
+  const U = {
+    uTime: { value: 0 }, uClock: { value: 0 },
+    uAmp: { value: 0.018 }, uFreq: { value: 0.95 },
+    uPointer: { value: new THREE.Vector3(0, 0, 1) }, uRipple: { value: 0 },
+    uReveal: { value: 1 }, uFloorY: { value: -1 }, uFadeLen: { value: 1 },
+  };
+  const NOISE = /* glsl */`
+    vec4 permute(vec4 x){ return mod(((x*34.0)+1.0)*x, 289.0); }
+    vec4 taylorInvSqrt(vec4 r){ return 1.79284291400159 - 0.85373472095314 * r; }
+    float snoise(vec3 v){
+      const vec2 C = vec2(1.0/6.0, 1.0/3.0); const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+      vec3 i = floor(v + dot(v, C.yyy)); vec3 x0 = v - i + dot(i, C.xxx);
+      vec3 g = step(x0.yzx, x0.xyz); vec3 l = 1.0 - g;
+      vec3 i1 = min(g.xyz, l.zxy); vec3 i2 = max(g.xyz, l.zxy);
+      vec3 x1 = x0 - i1 + C.xxx; vec3 x2 = x0 - i2 + 2.0*C.xxx; vec3 x3 = x0 - 1.0 + 3.0*C.xxx;
+      i = mod(i, 289.0);
+      vec4 p = permute(permute(permute(i.z + vec4(0.0, i1.z, i2.z, 1.0)) + i.y + vec4(0.0, i1.y, i2.y, 1.0)) + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+      float n_ = 1.0/7.0; vec3 ns = n_ * D.wyz - D.xzx;
+      vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+      vec4 x_ = floor(j * ns.z); vec4 y_ = floor(j - 7.0 * x_);
+      vec4 x = x_ * ns.x + ns.yyyy; vec4 y = y_ * ns.x + ns.yyyy; vec4 h = 1.0 - abs(x) - abs(y);
+      vec4 b0 = vec4(x.xy, y.xy); vec4 b1 = vec4(x.zw, y.zw);
+      vec4 s0 = floor(b0)*2.0 + 1.0; vec4 s1 = floor(b1)*2.0 + 1.0; vec4 sh = -step(h, vec4(0.0));
+      vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy; vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+      vec3 p0 = vec3(a0.xy, h.x); vec3 p1 = vec3(a0.zw, h.y); vec3 p2 = vec3(a1.xy, h.z); vec3 p3 = vec3(a1.zw, h.w);
+      vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+      p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+      vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0); m = m * m;
+      return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+    }`;
+  const DISPLACE = /* glsl */`
+    uniform float uTime, uClock, uAmp, uFreq, uRipple;
+    uniform vec3 uPointer;
+    float obsDisp(vec3 n){
+      float d = snoise(n * uFreq + vec3(0.0, uTime * 0.16, uTime * 0.10)) * 0.7
+              + snoise(n * uFreq * 2.3 - vec3(uTime * 0.12)) * 0.3;
+      d *= uAmp;
+      float dist = distance(n, uPointer);
+      float bump = exp(-dist * dist * 14.0);
+      float ring = sin(dist * 22.0 - uClock * 6.0) * exp(-dist * dist * 7.0);
+      return d + uRipple * (bump * 0.085 + ring * 0.012);
+    }
+    void obsidian(vec3 pos, out vec3 P, out vec3 N){
+      vec3 n = normalize(pos);
+      vec3 t = normalize(abs(n.y) < 0.99 ? cross(n, vec3(0.0, 1.0, 0.0)) : cross(n, vec3(1.0, 0.0, 0.0)));
+      vec3 b = cross(n, t);
+      const float e = 0.012;
+      vec3 p0 = n * (1.0 + obsDisp(n));
+      vec3 n1 = normalize(n + t * e); vec3 p1 = n1 * (1.0 + obsDisp(n1));
+      vec3 n2 = normalize(n + b * e); vec3 p2 = n2 * (1.0 + obsDisp(n2));
+      N = normalize(cross(p1 - p0, p2 - p0));
+      P = p0;
+    }
+`;
+  function makeMaterial(mirror) {
+    const m = new THREE.MeshPhysicalMaterial({
+      color: 0x030304, roughness: 0.2, metalness: 0.1,
+      clearcoat: 1, clearcoatRoughness: 0.05, envMapIntensity: 1.0,
+    });
+    m.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, U);
+      sh.vertexShader = NOISE + DISPLACE + (mirror ? "uniform float uFloorY; varying float vWY;\n" : "") +
+        sh.vertexShader
+          .replace("#include <beginnormal_vertex>", `vec3 obsP; vec3 obsN; obsidian(position, obsP, obsN);
+            vec3 objectNormal = obsN;
+            #ifdef USE_TANGENT
+              vec3 objectTangent = vec3( tangent.xyz );
+            #endif`)
+          .replace("#include <begin_vertex>", `vec3 transformed = obsP;
+            #ifdef USE_ALPHAHASH
+              vPosition = vec3( position );
+            #endif`)
+          .replace("#include <project_vertex>", "#include <project_vertex>\n" + (mirror ? "vWY = (modelMatrix * vec4(transformed, 1.0)).y;" : ""));
+      sh.fragmentShader = "uniform float uReveal;\n" + (mirror ? "uniform float uFloorY, uFadeLen; varying float vWY;\n" : "") +
+        sh.fragmentShader.replace("#include <dithering_fragment>", "#include <dithering_fragment>\n" +
+          "float obsFr = pow(1.0 - saturate(dot(normal, normalize(vViewPosition))), 4.0);\n" +
+          "gl_FragColor.rgb += obsFr * vec3(0.55, 0.64, 0.80) * 0.22;\n" +
+          (mirror
+            ? "gl_FragColor.rgb *= uReveal * 0.2 * (1.0 - smoothstep(0.0, uFadeLen, uFloorY - vWY));"
+            : "gl_FragColor.rgb *= uReveal;"));
+    };
+    m.customProgramCacheKey = () => (mirror ? "obsidian-mirror" : "obsidian");
+    return m;
+  }
+  const geo = new THREE.IcosahedronGeometry(1, lite ? 40 : 64);
+  const sphereMat = makeMaterial(false), mirrorMat = makeMaterial(true);
+  const sphere = new THREE.Mesh(geo, sphereMat);
+  const mirrorSphere = new THREE.Mesh(geo, mirrorMat);
+
+  const floorGroup = new THREE.Group();
+  const holder = new THREE.Group(); holder.add(sphere);
+  const mirrorFlip = new THREE.Group(); mirrorFlip.scale.set(1, -1, 1);
+  const mirrorHolder = new THREE.Group(); mirrorHolder.add(mirrorSphere); mirrorFlip.add(mirrorHolder);
+  const floorMat = new THREE.ShaderMaterial({
+    uniforms: { uReveal: U.uReveal },
+    transparent: true, depthWrite: false,
+    blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor,
+    blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneFactor,
+    vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+    fragmentShader: `uniform float uReveal; varying vec2 vUv;
+      void main(){ float r = length(vUv - 0.5) * 2.0;
+        float glow = pow(1.0 - smoothstep(0.0, 1.0, r), 2.0) * smoothstep(0.12, 0.42, r);
+        vec3 c = vec3(0.62, 0.68, 0.80) * 0.075 * glow * uReveal;
+        gl_FragColor = vec4(c, 0.0); }`,
+  });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floorGroup.add(holder, mirrorFlip, floor);
+  scene.add(floorGroup);
+
+  /* ----- Glitter vortex (positions computed entirely in the vertex shader) ----- */
+  const N = lite ? 5000 : 10000;
+  const aStart = new Float32Array(N * 3), aDir = new Float32Array(N * 3), aSeed = new Float32Array(N * 4), aKind = new Float32Array(N);
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < N; i++) {
+    const r = 0.2 + Math.pow(Math.random(), 1.35) * 6.2;
+    const gauss = (Math.random() + Math.random() + Math.random() - 1.5) * 0.7;
+    aStart[i * 3] = r;
+    // 75% of the glitter sits in three spiral arms, the rest is loose dust
+    aStart[i * 3 + 1] = Math.random() < 0.75 ? Math.floor(Math.random() * 3) * 2.0944 + gauss * 0.5 : Math.random() * Math.PI * 2;
+    aStart[i * 3 + 2] = (Math.random() * 2 - 1) * (Math.random() * 0.8 + 0.2);
+    const y = 1 - (i / (N - 1)) * 2, rr = Math.sqrt(1 - y * y), th = golden * i;
+    aDir[i * 3] = Math.cos(th) * rr; aDir[i * 3 + 1] = y; aDir[i * 3 + 2] = Math.sin(th) * rr;
+    for (let k = 0; k < 4; k++) aSeed[i * 4 + k] = Math.random();
+    aKind[i] = Math.random() < 0.07 ? 1 : 0;
+  }
+  const pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute("position", new THREE.BufferAttribute(aDir, 3));
+  pGeo.setAttribute("aStart", new THREE.BufferAttribute(aStart, 3));
+  pGeo.setAttribute("aSeed", new THREE.BufferAttribute(aSeed, 4));
+  pGeo.setAttribute("aKind", new THREE.BufferAttribute(aKind, 1));
+  const PU = {
+    uT: { value: 0 }, uScale: { value: 400 }, uRadius: { value: 1 },
+    uCenter: { value: new THREE.Vector3() },
+  };
+  const pMat = new THREE.ShaderMaterial({
+    uniforms: PU, transparent: true, depthWrite: false, depthTest: true,
+    blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor,
+    blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneFactor,
+    vertexShader: /* glsl */`
+      uniform float uT, uScale, uRadius; uniform vec3 uCenter;
+      attribute vec3 aStart; attribute vec4 aSeed; attribute float aKind;
+      varying float vA; varying vec3 vC;
+      mat3 rotX(float a){ float c = cos(a), s = sin(a); return mat3(1.0,0.0,0.0, 0.0,c,s, 0.0,-s,c); }
+      mat3 rotZ(float a){ float c = cos(a), s = sin(a); return mat3(c,s,0.0, -s,c,0.0, 0.0,0.0,1.0); }
+      void main(){
+        float t = uT;
+        float r = aStart.x * (1.0 - 0.5 * smoothstep(0.0, 2.6, t));
+        float ang = aStart.y + log(aStart.x + 0.3) * 2.3 + t * (1.25 / (0.3 + r * 0.45)) + t * t * 0.2;
+        vec3 p = vec3(cos(ang) * r, aStart.z * (0.18 + 0.14 * r), sin(ang) * r);
+        float tt = t * 0.9;
+        p += 0.24 * vec3(sin(p.y * 1.9 + tt + aSeed.x * 6.283),
+                         sin(p.z * 1.6 + tt * 1.2 + aSeed.y * 6.283),
+                         sin(p.x * 1.4 + tt * 0.8 + aSeed.z * 6.283));
+        p = rotZ(-0.35) * (rotX(1.1) * p);
+        p += mix(vec3(0.0), uCenter, smoothstep(0.3, 2.4, t));
+        float cs = 1.15 + aSeed.w * 0.75;
+        float k = clamp((t - cs) / 0.85, 0.0, 1.0);
+        k = k * k * (3.0 - 2.0 * k);
+        float kk = k * k;
+        vec3 target = uCenter + normalize(position) * uRadius * 1.02;
+        p = mix(p, target, kk);
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        gl_Position = projectionMatrix * mv;
+        float tw = 0.55 + 0.45 * sin(t * (3.0 + aSeed.y * 7.0) + aSeed.x * 40.0);
+        float sp = pow(max(0.0, sin(t * (1.7 + aSeed.z * 2.3) + aSeed.w * 31.0)), 24.0);
+        float size = (0.012 + 0.02 * aSeed.z * aSeed.z) * (0.7 + 0.45 * tw + sp * 1.1) * (1.0 + aKind * 0.5);
+        size *= mix(1.0, 0.55, kk);
+        gl_PointSize = max(1.5, size * uScale / -mv.z);
+        float fadeIn = smoothstep(0.0, 0.7, t - aSeed.x * 0.3);
+        float landed = t - (cs + 0.85);                  // seconds since this grain reached the surface
+        float arrive = 1.0 - smoothstep(0.15, 0.55, landed);
+        float flash = smoothstep(0.7, 1.0, k) * (1.0 - smoothstep(0.0, 0.3, landed));
+        vA = fadeIn * (0.35 + 0.55 * tw + sp * 1.6 + flash * 1.3) * arrive;
+        vC = aKind > 0.5 ? vec3(0.54, 0.71, 1.0) * 1.35 : mix(vec3(0.74, 0.77, 0.83), vec3(1.0), aSeed.y);
+      }`,
+    fragmentShader: /* glsl */`
+      varying float vA; varying vec3 vC;
+      void main(){
+        float r = length(gl_PointCoord - 0.5);
+        if (r > 0.5) discard;
+        float a = 1.0 - smoothstep(0.0, 0.5, r);
+        a = a * a * a + 0.6 * (1.0 - smoothstep(0.0, 0.12, r));
+        gl_FragColor = vec4(vC * a * vA, a * vA * 0.5);
+      }`,
+  });
+  const points = new THREE.Points(pGeo, pMat);
+  points.frustumCulled = false;
+  points.renderOrder = 10;
+  scene.add(points);
+
+  /* ----- Layout: map the .stage box onto the world so the sphere sits where the poster was ----- */
+  const L = { w: 1, h: 1, cx: 0, cy: 0, R: 1, floorY: -1 };
+  function layout() {
+    const hr = hero.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+    L.w = Math.max(1, hr.width); L.h = Math.max(1, hr.height);
+    renderer.setSize(L.w, L.h, false);
+    camera.aspect = L.w / L.h; camera.updateProjectionMatrix();
+    const halfH = Math.tan(THREE.MathUtils.degToRad(FOV / 2)) * DIST;
+    const wpp = (2 * halfH) / L.h;
+    const sx = sr.left - hr.left + sr.width / 2, sy = sr.top - hr.top + sr.height * 0.46;
+    L.R = sr.width * 0.34 * wpp;
+    L.cx = (sx - L.w / 2) * wpp; L.cy = -(sy - L.h / 2) * wpp;
+    const lift = L.R * 1.06;
+    L.floorY = L.cy - lift;
+    floorGroup.position.set(L.cx, L.floorY, 0);
+    holder.position.set(0, lift, 0); holder.scale.setScalar(L.R);
+    mirrorHolder.position.set(0, lift, 0); mirrorHolder.scale.setScalar(L.R);
+    floor.scale.set(L.R * 3.8, L.R * 2.4, 1);
+    U.uFloorY.value = L.floorY; U.uFadeLen.value = L.R * 0.8;
+    PU.uCenter.value.set(L.cx, L.cy, 0); PU.uRadius.value = L.R;
+    PU.uScale.value = (L.h * renderer.getPixelRatio()) / (2 * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
+    dirty = true;
+  }
+
+  /* ----- State ----- */
+  let dirty = true, visible = true, introT = null, pausedLocal = paused, disposed = false;
+  let ambient = 0, last = 0;
+  const ptr = { ndc: new THREE.Vector2(), inside: false, target: new THREE.Vector3(0, 0, 1), strength: 0 };
+  let scrollTarget = 0, scrollCur = 0;
+  const ray = new THREE.Raycaster(), inv = new THREE.Matrix4(), tmp = new THREE.Vector3(), q = new THREE.Vector3();
+  const perf = { acc: 0, n: 0, dropped: false };
+  const info = { dpr, particles: N, detail: lite ? 40 : 64, lite, droppedDpr: false, avgFrameMs: 0 };
+
+  function onPointer(e) {
+    const r = canvas.getBoundingClientRect();
+    ptr.ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ptr.inside = true; wake();
+  }
+  function onLeave() { ptr.inside = false; wake(); }
+  function onScroll() { scrollTarget = clamp01(scrollY / Math.max(1, L.h)); wake(); }
+  hero.addEventListener("pointermove", onPointer, { passive: true });
+  hero.addEventListener("pointerleave", onLeave);
+  addEventListener("scroll", onScroll, { passive: true });
+  const ro = new ResizeObserver(() => { layout(); wake(); });
+  ro.observe(hero);
+  const io = new IntersectionObserver((es) => { visible = es[0].isIntersecting; if (visible) { last = 0; wake(); } });
+  io.observe(hero);
+  const onVis = () => { if (!document.hidden) { last = 0; wake(); } };
+  document.addEventListener("visibilitychange", onVis);
+
+  function setIntro(t) {
+    introT = t;
+    dirty = true;
+  }
+  function applyIntro() {
+    if (introT == null) {
+      points.visible = false;
+      sphere.visible = mirrorSphere.visible = true;
+      U.uReveal.value = 1;
+      camera.position.z = DIST;
+      return 1;
+    }
+    const t = introT;
+    points.visible = t < 3.4;
+    sphere.visible = mirrorSphere.visible = t > 2.0;
+    PU.uT.value = t;
+    U.uReveal.value = easeOut3(clamp01((t - 2.25) / 0.85));
+    camera.position.z = DIST * (1 + 0.55 * (1 - easeInOut3(clamp01(t / 3.2))));
+    return 0.86 + 0.14 * easeOut3(clamp01((t - 2.05) / 1.1));
+  }
+
+  function frame(now) {
+    if (disposed) return false;
+    const raw = last ? (now - last) / 1000 : 0;   // 0 = first frame after a (re)start
+    const dt = raw ? Math.min(0.1, raw) : 1 / 60;
+    last = now;
+    U.uClock.value += dt;
+    if (!pausedLocal) ambient += dt;
+    U.uTime.value = ambient;
+
+    // scroll: extra rotation + slight drift, eased
+    scrollCur += (scrollTarget - scrollCur) * Math.min(1, dt * 6);
+    const scale = applyIntro();
+    holder.scale.setScalar(L.R * scale);
+    holder.rotation.set(0.28 + scrollCur * 0.5, ambient * 0.14 + scrollCur * 1.6, 0.06);
+    holder.position.y = L.R * 1.06 + scrollCur * L.R * 0.35;
+    mirrorHolder.position.y = holder.position.y;
+    mirrorHolder.quaternion.copy(holder.quaternion);
+    mirrorHolder.scale.copy(holder.scale);
+    floorGroup.updateMatrixWorld(true);
+
+    // pointer: nearest point on the (undisplaced) sphere to the pointer ray, in object space
+    let want = 0;
+    if (ptr.inside && introT == null) {
+      ray.setFromCamera(ptr.ndc, camera);
+      inv.copy(holder.matrixWorld).invert();
+      ray.ray.applyMatrix4(inv);
+      const o = ray.ray.origin, d = ray.ray.direction;
+      const tca = Math.max(0, -o.dot(d));
+      q.copy(d).multiplyScalar(tca).add(o);
+      const qd = q.length();
+      if (qd < 1) tmp.copy(d).multiplyScalar(tca - Math.sqrt(1 - qd * qd)).add(o).normalize();
+      else tmp.copy(q).normalize();
+      ptr.target.lerp(tmp, Math.min(1, dt * 10)).normalize();
+      want = 1 - THREE.MathUtils.smoothstep(qd, 0.95, 1.7);
+    }
+    ptr.strength += (want - ptr.strength) * Math.min(1, dt * (want > ptr.strength ? 6 : 3));
+    U.uPointer.value.copy(ptr.target);
+    U.uRipple.value = ptr.strength;
+
+    renderer.render(scene, camera);
+    dirty = false;
+
+    // adaptive DPR: after ~1 s of slow frames, drop to 1
+    if (!perf.dropped && raw && raw < 2 && !pausedLocal) {
+      perf.acc += raw; perf.n++;
+      if (perf.acc > 1) {
+        const avg = (perf.acc / perf.n) * 1000; info.avgFrameMs = Math.round(avg * 10) / 10;
+        if (avg > 24 && renderer.getPixelRatio() > 1) {
+          renderer.setPixelRatio(1); info.dpr = 1; info.droppedDpr = true; perf.dropped = true; layout();
+        }
+        perf.acc = 0; perf.n = 0;
+      }
+    }
+
+    const settling = Math.abs(scrollTarget - scrollCur) > 1e-4 || Math.abs(want - ptr.strength) > 1e-3 || (ptr.inside && want > 0);
+    const introRunning = introT != null && intro.active && !intro.frozen;
+    return !pausedLocal || settling || introRunning || dirty;
+  }
+
+  function dispose() {
+    disposed = true;
+    ro.disconnect(); io.disconnect();
+    hero.removeEventListener("pointermove", onPointer); hero.removeEventListener("pointerleave", onLeave);
+    removeEventListener("scroll", onScroll); document.removeEventListener("visibilitychange", onVis);
+    geo.dispose(); pGeo.dispose(); floor.geometry.dispose();
+    sphereMat.dispose(); mirrorMat.dispose(); floorMat.dispose(); pMat.dispose();
+    envRT.dispose(); renderer.dispose(); canvas.remove();
+    root.classList.remove("gl-live");
+  }
+  addEventListener("pagehide", (e) => { if (!e.persisted) dispose(); });
+
+  hero.prepend(canvas);
+  layout();
+  onScroll();
+  // compile before the intro starts so the first frames don't hitch
+  if (renderer.compileAsync) await renderer.compileAsync(scene, camera);
+  return {
+    info, setIntro, frame, dispose,
+    canRender: () => visible && !document.hidden && !disposed,
+    setPaused: (p) => { pausedLocal = p; dirty = true; },
+  };
+}
+</script>
+</body>
+</html>
