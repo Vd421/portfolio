@@ -1,0 +1,1502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Particle Globe</title>
+<meta name="description" content="Single-page portfolio for Vaibhav Dhir: a globe of fine luminous dust blasts apart, writes his name, then turns with the scroll behind his work.">
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@800&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400&display=swap">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js"
+  }
+}
+</script>
+<script>
+  /* Before first paint. JS off: none of this runs and the page is plain and complete.
+     intro-wait hides page one's copy until the particle canvas is running; a CSS failsafe shows it
+     again at 2.4 s whatever happens. Reduced motion or seen this session: no intro (?t=… forces it). */
+  (function () {
+    var r = document.documentElement, q = new URLSearchParams(location.search);
+    r.classList.add("js");
+    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches, seen = false;
+    try { seen = sessionStorage.getItem("vd-globe-intro") === "1"; } catch (e) {}
+    if (reduce) r.classList.add("rm");
+    if (!reduce && (!seen || q.has("t"))) r.classList.add("intro-wait");
+    if (q.has("t")) r.classList.add("qa");
+  })();
+</script>
+<style>
+  /* Tokens inlined from prototypes/demos/glossy-black.css (keep in sync). Dark-only page by design. */
+  :root,
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #000;
+    --surface: #0d0d0f;
+    --surface-2: #161618;
+    --fg: #f5f5f7;            /* 19.3:1 on #000 */
+    --fg-2: #a1a1a6;          /*  8.2:1 */
+    --fg-3: #86868b;          /*  5.8:1 (small labels) */
+    --accent: #8ab4ff;        /* 10.1:1 */
+    --on-accent: #000;
+    --hairline: rgb(255 255 255 / 0.08);
+    --hairline-2: rgb(255 255 255 / 0.16);
+    --glare: radial-gradient(120% 60% at 50% -10%, rgb(255 255 255 / 0.07), transparent 60%);
+    --glass: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 55%, #070708 100%);
+    --glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.10), inset 0 0 0 1px rgb(255 255 255 / 0.06),
+                  0 30px 60px -30px rgb(0 0 0 / 0.9);
+    --sheen: linear-gradient(115deg, rgb(255 255 255 / 0.07) 0%, rgb(255 255 255 / 0) 38%);
+    --chrome: linear-gradient(180deg, #ffffff 0%, #e6e6ea 45%, #9a9aa2 100%);
+    --font-display: "Inter Tight", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    --ease-out: cubic-bezier(0.2, 0, 0, 1);
+    --gutter: clamp(16px, 5vw, 80px);
+    --pill-h: 48px;
+    --dock-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #000; --fg: #f5f5f7; }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  * { margin: 0; }
+  html { background: var(--bg); color: var(--fg); -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font: 400 1rem/1.6 var(--font-body);
+    min-height: 100svh;
+    overflow-x: clip;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  button, input { font: inherit; color: inherit; }
+  button { -webkit-tap-highlight-color: transparent; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .mono { font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  .js-only { display: none !important; }
+  .js .js-only { display: inline-flex !important; }
+  .rm .needs-motion { display: none !important; }
+
+  /* Lenis (from lenis@1.3.27/dist/lenis.css) */
+  html.lenis, html.lenis body { height: auto; }
+  .lenis:not(.lenis-autoToggle).lenis-stopped { overflow: clip; }
+  .lenis.lenis-smooth iframe { pointer-events: none; }
+
+  /* ---------- The globe layer (decorative; behind everything) ---------- */
+  .bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  .bg canvas { display: block; width: 100%; height: 100%; }
+  .rm .bg { position: absolute; inset: 0 0 auto 0; height: 100svh; } /* reduced motion: one still frame on page one */
+
+  /* ---------- Buttons ---------- */
+  .pill, .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; cursor: pointer;
+    text-decoration: none; white-space: nowrap;
+    transition: scale 150ms ease-out, opacity 150ms ease-out;
+  }
+  .pill {
+    font: 400 0.75rem/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--fg); background: var(--sheen), var(--glass); box-shadow: var(--glass-edge);
+  }
+  .btn { min-height: 48px; padding: 0 24px; font: 500 1rem/1 var(--font-body); }
+  .btn-primary {
+    color: #000;
+    background: linear-gradient(180deg, #ffffff 0%, #f5f5f7 55%, #dcdce1 100%);
+    box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 rgb(0 0 0 / 0.12), 0 12px 30px -12px rgb(255 255 255 / 0.25);
+  }
+  .btn-glass { color: var(--fg); background: var(--sheen), var(--glass); box-shadow: var(--glass-edge); }
+  .pill:active, .btn:active { scale: 0.96; }
+  .pill, .btn, .bubble, .ctl, .copy-btn, .send, .x { border-radius: 999px; }
+
+  /* ---------- Top bar ---------- */
+  .bar {
+    position: fixed; inset: 0 0 auto 0; z-index: 30;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px var(--gutter);
+    pointer-events: none;
+  }
+  .bar > * { pointer-events: auto; }
+  .brand {
+    display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
+    font-size: 0.75rem; color: var(--fg); text-decoration: none;
+  }
+  .nav { display: none; gap: 2px; padding: 0 6px; border-radius: 999px; background: var(--sheen), var(--glass); box-shadow: var(--glass-edge); }
+  .nav a {
+    display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px;
+    font-size: 0.75rem; color: var(--fg-2); text-decoration: none; border-radius: 999px;
+  }
+  @media (hover: hover) { .nav a:hover { color: var(--fg); } }
+  @media (min-width: 960px) { .nav { display: flex; } }
+  .controls { display: flex; gap: 8px; }
+  .short { display: none; }
+  @media (max-width: 400px) {
+    .long { display: none; } .short { display: inline; }
+    .controls .pill { padding: 0 14px; }
+  }
+
+  /* Skip pill: only while the intro can run */
+  .skip { display: none; position: fixed; top: 12px; right: var(--gutter); z-index: 31; }
+  .intro-wait .skip, .intro-live .skip { display: inline-flex; }
+
+  main { position: relative; z-index: 1; overflow-x: clip; }
+
+  /* ---------- Page one ---------- */
+  .page1 {
+    position: relative;
+    min-height: 100svh;
+    display: flex; align-items: center;
+    max-width: 1440px; margin: 0 auto;
+    padding: 96px var(--gutter) calc(var(--pill-h) + 72px);
+  }
+  .copy { position: relative; max-width: 46rem; }
+  .copy::before { /* static scrim so copy stays legible over the dust */
+    content: ""; position: absolute; z-index: -1; inset: -12% -18% -12% -40%; pointer-events: none;
+    background: radial-gradient(closest-side, rgb(0 0 0 / 0.72), rgb(0 0 0 / 0.45) 60%, transparent);
+  }
+  .status { display: inline-flex; align-items: center; gap: 10px; font-size: 0.75rem; color: var(--fg-2); margin-bottom: 20px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--accent); box-shadow: 0 0 0 4px rgb(138 180 255 / 0.14); }
+  .name {
+    font: 800 clamp(2.6rem, 1rem + 7.2vw, 7.25rem)/0.98 var(--font-display);
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+    padding: 0.04em 0.04em 0.1em; margin: 0 -0.04em;
+    color: var(--fg);
+  }
+  @supports (background-clip: text) or (-webkit-background-clip: text) {
+    .name { background: var(--chrome); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  }
+  .name:focus, .sec h2:focus { outline: none; } /* programmatic focus targets only (tabindex=-1) */
+  .tagline { margin-top: 20px; max-width: 34rem; font-size: clamp(1.125rem, 1.5vw, 1.375rem); line-height: 1.5; color: var(--fg); text-wrap: pretty; }
+  .about { margin-top: 20px; max-width: 36rem; color: var(--fg-2); }
+  .about p + p { margin-top: 12px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+
+  /* Intro: page one waits for the canvas (CSS failsafe shows it at 2.4 s) */
+  .intro-wait .seq, .intro-wait .name { opacity: 0; animation: vd-failsafe 1ms linear 2.4s forwards; }
+  .intro-wait.qa .seq, .intro-wait.qa .name { animation: none; }
+  @keyframes vd-failsafe { to { opacity: 1; } }
+
+  /* ---------- Sections ---------- */
+  .sec {
+    position: relative;
+    max-width: 1440px; margin: 0 auto;
+    padding: 120px var(--gutter);
+    min-height: 100svh;
+    perspective: 1200px;
+  }
+  .sec-head { max-width: 40rem; transform-origin: 50% 100%; }
+  .kicker { font-size: 0.75rem; color: var(--fg-3); margin-bottom: 12px; }
+  .sec h2 {
+    font: 800 clamp(2.25rem, 1rem + 4vw, 4rem)/1.02 var(--font-display);
+    letter-spacing: -0.03em; text-wrap: balance;
+    padding-bottom: 0.06em;
+    color: var(--fg);
+  }
+  @supports (background-clip: text) or (-webkit-background-clip: text) {
+    .sec h2 { background: var(--chrome); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  }
+  .lede { margin-top: 16px; color: var(--fg-2); max-width: 36rem; text-wrap: pretty; }
+  .card {
+    border-radius: 24px; padding: 24px;
+    background: var(--sheen), var(--glass); box-shadow: var(--glass-edge);
+  }
+  .chips { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 999px;
+    font: 400 0.8125rem/1 var(--font-body); color: var(--fg);
+    background: var(--sheen), var(--glass); box-shadow: var(--glass-edge);
+  }
+  .badge { display: inline-flex; align-items: center; gap: 8px; font-size: 0.6875rem; color: var(--accent); }
+  .badge[hidden] { display: none; }
+  .badge .dot { width: 6px; height: 6px; box-shadow: 0 0 0 3px rgb(138 180 255 / 0.14); }
+
+  /* ---------- Work: floating projects ---------- */
+  .work { display: flex; flex-direction: column; }
+  .field { list-style: none; padding: 0; margin-top: 40px; display: flex; flex-wrap: wrap; gap: 12px; }
+  :root:not(.js) .field { display: none; }
+  .bubble {
+    position: relative;
+    display: inline-flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px;
+    min-height: 56px; padding: 10px 22px; border: 0; cursor: pointer; text-align: left;
+    color: var(--fg); background: var(--sheen), var(--glass); box-shadow: var(--glass-edge);
+    transition: scale 150ms ease-out, opacity 200ms ease-out;
+  }
+  .bubble:active { scale: 0.96; }
+  .b-title { font: 500 1rem/1.2 var(--font-body); }
+  .b-kick { font: 400 0.6875rem/1.3 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); }
+  .bubble .badge { margin-bottom: 2px; }
+  .field.dim .bubble { opacity: 0.3; }
+  .field .bubble.origin { opacity: 0; transition: none; }
+  /* Float mode (JS, wide, motion allowed): bubbles orbit the globe */
+  .field.float { position: relative; display: block; height: clamp(560px, 80svh, 800px); margin-top: 16px; }
+  .field.float .slot { position: absolute; left: 0; top: 0; translate: -50% -50%; width: max-content; }
+  .field.float .b-kick { white-space: nowrap; }
+  .field.float .par, .field.float .bubble { will-change: transform; }
+  .field-note { margin-top: 16px; font-size: 0.75rem; color: var(--fg-3); }
+  :root:not(.js) .field-note { display: none; }
+
+  /* Static project cards: the JS-off view, and the source for the dialog */
+  .proj-cards { list-style: none; padding: 0; margin-top: 40px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+  .js .proj-cards { display: none; }
+  .proj h3 { font: 800 1.5rem/1.15 var(--font-display); letter-spacing: -0.02em; margin: 6px 0 10px; }
+  .p-kick { font-size: 0.6875rem; color: var(--fg-3); }
+  .proj p { color: var(--fg-2); }
+  .proj h4, .pd h4 { margin-top: 16px; margin-bottom: 6px; font: 400 0.6875rem/1.4 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); }
+
+  /* ---------- Project dialog (FLIP from the bubble) ---------- */
+  .pd { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 16px; }
+  .pd[hidden] { display: none; }
+  .pd-scrim { position: absolute; inset: 0; background: rgb(0 0 0 / 0.62); }
+  .pd-card { position: relative; width: min(600px, 100%); border-radius: 28px; outline: none; }
+  .pd-bg {
+    position: absolute; inset: 0; border-radius: inherit; transform-origin: 0 0;
+    background: var(--sheen), var(--glass);
+    box-shadow: var(--glass-edge), 0 40px 120px -20px rgb(0 0 0 / 0.95), 0 0 0 1px rgb(255 255 255 / 0.04);
+  }
+  .pd-body { position: relative; padding: 28px; max-height: calc(100svh - 32px); overflow: auto; }
+  .pd-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .pd-kick { font-size: 0.6875rem; color: var(--fg-3); padding-top: 14px; }
+  .pd h3 { font: 800 clamp(1.75rem, 1rem + 2.5vw, 2.5rem)/1.05 var(--font-display); letter-spacing: -0.025em; margin: 8px 0 14px; text-wrap: balance; }
+  .pd .badge { margin-top: 10px; }
+  .pd-sum { color: var(--fg); }
+  .pd-goal { color: var(--fg-2); }
+  .pd .chips { margin-top: 4px; }
+
+  /* ---------- Experience ---------- */
+  .exp-list { list-style: none; padding: 0; margin-top: 40px; display: grid; gap: 16px; max-width: 46rem; }
+  @media (min-width: 1100px) { .exp-list { margin-left: auto; margin-right: 4vw; } .experience .sec-head { margin-left: auto; margin-right: calc(4vw + 6rem); } }
+  .stop { display: grid; gap: 6px; }
+  .stop-when { font-size: 0.75rem; color: var(--fg-3); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .stop h3 { font: 800 1.375rem/1.2 var(--font-display); letter-spacing: -0.015em; }
+  .stop-where { color: var(--fg); font-weight: 500; }
+  .stop p { color: var(--fg-2); }
+
+  /* ---------- Skills ---------- */
+  .skill-groups { list-style: none; padding: 0; margin-top: 40px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); max-width: 960px; }
+  .skill-groups h3 { font: 400 0.75rem/1.4 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); margin-bottom: 14px; }
+
+  /* ---------- Contact ---------- */
+  .contact { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .contact .sec-head { margin: 0 auto; }
+  .contact-card { margin-top: 40px; width: min(560px, 100%); display: grid; gap: 18px; text-align: left; }
+  .row-label { font-size: 0.6875rem; color: var(--fg-3); margin-bottom: 6px; }
+  .email-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .email { font: 500 clamp(1rem, 0.8rem + 1vw, 1.25rem)/1.3 var(--font-body); color: var(--fg); overflow-wrap: anywhere; user-select: all; }
+  .copy-btn { min-height: 44px; padding: 0 18px; }
+  .links { display: flex; gap: 12px; flex-wrap: wrap; }
+  .links a { flex: 1 1 200px; }
+  footer { position: relative; z-index: 1; padding: 32px var(--gutter) calc(var(--pill-h) + 56px); color: var(--fg-3); font-size: 0.8125rem; max-width: 1440px; margin: 0 auto; text-align: center; }
+
+  /* ---------- Let's talk (split pill, from the hero demo, glossy black) ---------- */
+  .ctl {
+    position: relative;
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    height: var(--pill-h); padding: 0 22px;
+    border: 1px solid var(--hairline-2);
+    background: linear-gradient(180deg, #1e1e21 0%, #0d0d0f 60%, #070708 100%);
+    color: var(--fg);
+    font: 500 0.9375rem/1 var(--font-body);
+    text-decoration: none; white-space: nowrap; cursor: pointer;
+    transition: scale 150ms ease-out;
+  }
+  .ctl.dock-static { position: fixed; left: 50%; bottom: var(--dock-bottom); z-index: 20; transform: translateX(-50%); }
+  .js .dock-static { display: none; }
+  .talk { display: none; }
+  .js .talk { position: fixed; left: 0; right: 0; bottom: var(--dock-bottom); z-index: 20; display: flex; justify-content: center; pointer-events: none; }
+  .talk-inner { position: relative; height: var(--pill-h); }
+  .goo { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+  .talk .pill-btn { pointer-events: auto; }
+  .pill-in, .b-label { display: inline-flex; align-items: center; gap: 10px; }
+  .bubbles { position: absolute; top: 0; left: 50%; transform: translateX(-50%); display: flex; gap: 14px; width: max-content; visibility: hidden; }
+  .talk.show .bubbles { visibility: visible; }
+  .talk.open .tb { pointer-events: auto; }
+  .talk.open.goo-on .pill-btn { pointer-events: none; }
+  .talk.merging .pill-btn:focus-visible { outline-color: transparent; }
+  .goo-on .ctl { background: transparent; border-color: transparent; }
+  .goo-on .tb .b-label { opacity: 0; }
+  .talk.rm .bubbles { top: auto; bottom: calc(100% + 10px); }
+  .talk.rm .tb { opacity: 0; transition: opacity 150ms ease-out; }
+  .talk.rm.open .tb { opacity: 1; }
+  .ctl:active { scale: 0.96; }
+
+  .ask {
+    position: fixed; z-index: 21; left: 50%;
+    bottom: calc(var(--dock-bottom) + var(--pill-h) + 14px);
+    width: min(380px, calc(100vw - 32px));
+    padding: 18px 18px 20px; border-radius: 24px;
+    background: var(--sheen), var(--glass); box-shadow: var(--glass-edge), 0 24px 48px -12px rgb(0 0 0 / 0.8);
+    opacity: 0; transform: translate(-50%, 8px);
+    transition: opacity 150ms ease-out, transform 150ms ease-out;
+  }
+  .ask.in { opacity: 1; transform: translate(-50%, 0); transition-duration: 200ms; }
+  .rm-mode .ask { bottom: calc(var(--dock-bottom) + 2 * var(--pill-h) + 24px); }
+  .ask[hidden] { display: none; }
+  .ask-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .ask h2 { font: 400 0.75rem/1.5 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-2); }
+  .x { display: inline-grid; place-items: center; width: 44px; height: 44px; margin: -10px -10px -10px 0; border: 0; background: transparent; cursor: pointer; color: var(--fg-2); transition: scale 150ms ease-out; }
+  .x:active { scale: 0.96; }
+  @media (hover: hover) { .x:hover { color: var(--fg); } }
+  .ask label { display: block; font-weight: 500; margin-bottom: 8px; }
+  .ask-row { display: flex; gap: 8px; }
+  .ask input { flex: 1; min-width: 0; height: 44px; padding: 0 14px; font-size: 16px; border-radius: 12px; border: 1px solid rgb(255 255 255 / 0.3); background: #000; }
+  .ask input::placeholder { color: var(--fg-3); opacity: 1; }
+  .send { height: 44px; padding: 0 18px; border: 0; background: linear-gradient(180deg, #fff, #dcdce1); color: #000; font-weight: 500; cursor: pointer; transition: scale 150ms ease-out; }
+  .send:active { scale: 0.96; }
+  .note { margin-top: 12px; font-size: 0.875rem; line-height: 1.5; color: var(--fg-2); }
+  .ask-status { margin-top: 8px; font-size: 0.875rem; line-height: 1.5; color: var(--fg); }
+  .ask-status:empty { display: none; }
+
+  @media (max-width: 899px) {
+    .page1 { align-items: flex-end; padding-top: 112px; }
+    .copy::before { inset: -8% 0; }
+    .sec { padding-top: 96px; padding-bottom: 96px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pill, .btn, .bubble, .ctl, .send, .x { transition: opacity 150ms ease-out; }
+    .pill:active, .btn:active, .bubble:active, .ctl:active, .send:active, .x:active { scale: none; }
+  }
+</style>
+</head>
+<body>
+<div class="bg" id="bg" aria-hidden="true"></div>
+
+<header class="bar seq" id="bar">
+  <a class="brand mono" href="#about">VD</a>
+  <nav class="nav mono" aria-label="Sections">
+    <a href="#about">About</a><a href="#work">Work</a><a href="#experience">Experience</a><a href="#skills">Skills</a><a href="#contact">Contact</a>
+  </nav>
+  <div class="controls">
+    <button type="button" class="pill js-only needs-motion" id="replay"><span class="long">Replay intro</span><span class="short">Replay</span></button>
+    <button type="button" class="pill js-only needs-motion" id="pause"><span class="long">Pause motion</span><span class="short">Pause</span></button>
+  </div>
+</header>
+<button type="button" class="pill skip" id="skip">Skip intro</button>
+
+<main>
+  <section class="page1" id="about" aria-labelledby="name">
+    <div class="copy">
+      <p class="status mono seq"><span class="dot" aria-hidden="true"></span>Open to Forward Deployed &amp; Solutions Engineering roles</p>
+      <h1 class="name" id="name" tabindex="-1">Vaibhav Dhir</h1>
+      <p class="tagline seq">I build AI systems that ship, then sit with the people using them until they work.</p>
+      <div class="about">
+        <p class="seq">Electrical and Electronics Engineering graduate from VIT Chennai (2021–2025), now an IT Offshore Associate at HCLTech on the MetLife account.</p>
+        <p class="seq">My work sits where AI meets real users: session replay that flags where people got stuck, an AI agent that runs a job search end to end, LLM features in a production financial platform, and computer vision that tracks a whole match in real time.</p>
+      </div>
+      <div class="actions seq">
+        <a class="btn btn-primary" href="#work">See my work</a>
+        <a class="btn btn-glass" href="#contact">Get in touch</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec work" id="work" aria-labelledby="work-h">
+    <div class="sec-head">
+      <p class="kicker mono">Selected work</p>
+      <h2 id="work-h" tabindex="-1">Projects</h2>
+      <p class="lede">Seven projects, from AI agents to hardware. Open one to see what it does and what it runs on.</p>
+    </div>
+
+    <ul class="field" id="field">
+      <li class="slot" data-rise><div class="par"><button class="bubble" type="button" aria-expanded="false" aria-controls="pd" data-src="p-replay"><span class="badge mono"><span class="dot" aria-hidden="true"></span>Main project</span><span class="b-title">Replay</span><span class="b-kick">Session replay with AI bug flagging</span></button></div></li>
+      <li class="slot" data-rise><div class="par"><button class="bubble" type="button" aria-expanded="false" aria-controls="pd" data-src="p-careerpilot"><span class="b-title">CareerPilot AI</span><span class="b-kick">AI job-search agent</span></button></div></li>
+      <li class="slot" data-rise><div class="par"><button class="bubble" type="button" aria-expanded="false" aria-controls="pd" data-src="p-luna"><span class="b-title">Luna</span><span class="b-kick">Multimodal AI chatbot</span></button></div></li>
+      <li class="slot" data-rise><div class="par"><button class="bubble" type="button" aria-expanded="false" aria-controls="pd" data-src="p-tracker"><span class="b-title">Soccer Player Tracker</span><span class="b-kick">Real-time multi-object tracking</span></button></div></li>
+      <li class="slot" data-rise><div class="par"><button class="bubble" type="button" aria-expanded="false" aria-controls="pd" data-src="p-cropweed"><span class="b-title">Crop and Weed Detector</span><span class="b-kick">Precision agriculture vision</span></button></div></li>
+      <li class="slot" data-rise><div class="par"><button class="bubble" type="button" aria-expanded="false" aria-controls="pd" data-src="p-stick"><span class="b-title">AI Blind Stick</span><span class="b-kick">Assistive navigation hardware</span></button></div></li>
+      <li class="slot" data-rise><div class="par"><button class="bubble" type="button" aria-expanded="false" aria-controls="pd" data-src="p-firebot"><span class="b-title">Fire Fighter Bot</span><span class="b-kick">Autonomous detection and response</span></button></div></li>
+    </ul>
+    <p class="field-note mono needs-motion" id="field-note">Projects drift on their own. Pause motion stops them.</p>
+
+    <ul class="proj-cards">
+      <li class="card proj" id="p-replay">
+        <p class="badge mono"><span class="dot" aria-hidden="true"></span>Main project</p>
+        <p class="p-kick mono">Session replay with AI bug flagging</p>
+        <h3>Replay</h3>
+        <p class="p-sum">Records user interactions on a website and replays them in a React dashboard; AI analysis flags the sessions where users got stuck, so friction surfaces without manual review.</p>
+        <h4>Goal</h4><p class="p-goal">Jump straight to the second a session went wrong, without reading logs.</p>
+        <h4>Stack</h4><ul class="chips p-stack"><li class="chip">TypeScript</li><li class="chip">React</li><li class="chip">Node.js</li><li class="chip">PostgreSQL</li></ul>
+      </li>
+      <li class="card proj" id="p-careerpilot">
+        <p class="p-kick mono">AI job-search agent</p>
+        <h3>CareerPilot AI</h3>
+        <p class="p-sum">Takes a job description, finds matching roles, applies, and tracks every application end to end, with automated SMS updates, recruiter follow-ups and referral requests.</p>
+        <h4>Goal</h4><p class="p-goal">Go from a job description to tracked applications without the busywork.</p>
+        <h4>Stack</h4><ul class="chips p-stack"><li class="chip">React</li><li class="chip">TypeScript</li><li class="chip">Node.js</li><li class="chip">Prisma</li><li class="chip">PostgreSQL</li><li class="chip">Claude API</li></ul>
+      </li>
+      <li class="card proj" id="p-luna">
+        <p class="p-kick mono">Multimodal AI chatbot</p>
+        <h3>Luna</h3>
+        <p class="p-sum">A full-stack conversational app that generates text and images with GPT-4 and DALL·E, with multi-turn memory and a Flask REST backend for conversation state.</p>
+        <h4>Goal</h4><p class="p-goal">Keep one conversation going across text and images.</p>
+        <h4>Stack</h4><ul class="chips p-stack"><li class="chip">Python</li><li class="chip">Flask</li><li class="chip">OpenAI API</li><li class="chip">DALL·E</li></ul>
+      </li>
+      <li class="card proj" id="p-tracker">
+        <p class="p-kick mono">Real-time multi-object tracking</p>
+        <h3>Soccer Player Tracker</h3>
+        <p class="p-sum">Tracks players, referees and the ball through a match in real time, with a re-identification pipeline that holds identities through occlusions and fast motion.</p>
+        <h4>Goal</h4><p class="p-goal">Keep the same ID on every player through crossings and occlusions.</p>
+        <h4>Stack</h4><ul class="chips p-stack"><li class="chip">Python</li><li class="chip">YOLOv8</li><li class="chip">DeepSORT</li><li class="chip">OpenCV</li></ul>
+      </li>
+      <li class="card proj" id="p-cropweed">
+        <p class="p-kick mono">Precision agriculture vision</p>
+        <h3>Crop and Weed Detector</h3>
+        <p class="p-sum">Tells crops from weeds in field images so treatment goes only where it is needed.</p>
+        <h4>Goal</h4><p class="p-goal">Give operators a desktop tool that marks weeds field by field.</p>
+        <h4>Stack</h4><ul class="chips p-stack"><li class="chip">Python</li><li class="chip">YOLOv3</li><li class="chip">OpenCV</li><li class="chip">Tkinter</li></ul>
+      </li>
+      <li class="card proj" id="p-stick">
+        <p class="p-kick mono">Assistive navigation hardware</p>
+        <h3>AI Blind Stick</h3>
+        <p class="p-sum">A walking aid that senses obstacles with ultrasonic sensors and guides its user around them.</p>
+        <h4>Goal</h4><p class="p-goal">Get someone safely around what they cannot see.</p>
+        <h4>Stack</h4><ul class="chips p-stack"><li class="chip">Embedded C</li><li class="chip">Arduino</li><li class="chip">Ultrasonic sensors</li></ul>
+      </li>
+      <li class="card proj" id="p-firebot">
+        <p class="p-kick mono">Autonomous detection and response</p>
+        <h3>Fire Fighter Bot</h3>
+        <p class="p-sum">An Arduino robot that finds a fire with fused sensor readings, drives to it and puts it out.</p>
+        <h4>Goal</h4><p class="p-goal">Find the fire, reach it, put it out. No operator.</p>
+        <h4>Stack</h4><ul class="chips p-stack"><li class="chip">Arduino</li><li class="chip">Embedded C</li><li class="chip">Sensor fusion</li></ul>
+      </li>
+    </ul>
+  </section>
+
+  <section class="sec experience" id="experience" aria-labelledby="exp-h">
+    <div class="sec-head">
+      <p class="kicker mono">Newest first</p>
+      <h2 id="exp-h" tabindex="-1">Experience</h2>
+    </div>
+    <ol class="exp-list">
+      <li class="card stop" data-rise>
+        <p class="stop-when mono"><span>Aug 2026 – Now</span><span class="badge"><span class="dot" aria-hidden="true"></span>Current</span></p>
+        <h3>IT Offshore Associate</h3>
+        <p class="stop-where">HCLTech · MetLife · Noida</p>
+        <p>Support MetLife’s global IT service desk under ITIL: incident triage and escalation in ServiceNow within SLAs, identity and access in Microsoft Entra ID, and Microsoft 365, Intune and SCCM support.</p>
+      </li>
+      <li class="card stop" data-rise>
+        <p class="stop-when mono"><span>May – Jun 2025</span></p>
+        <h3>Generative AI Engineer Intern</h3>
+        <p class="stop-where">Hapticware · Remote</p>
+        <p>Integrated OpenAI LLM APIs for real-time question answering and document summarization in a production financial platform. Prompt workflows cut API response latency by 40%; LangChain and vector-database pipelines power context-aware answers.</p>
+      </li>
+      <li class="card stop" data-rise>
+        <p class="stop-when mono"><span>Oct – Nov 2023</span></p>
+        <h3>Software Developer Intern</h3>
+        <p class="stop-where">Vertex Info Soft · Chandigarh</p>
+        <p>Built Flask and Firebase backend services and REST APIs; query optimization and caching cut response time by 30%, and stricter debugging and automated tests cut production bugs by 40%.</p>
+      </li>
+      <li class="card stop" data-rise>
+        <p class="stop-when mono"><span>2021 – 2025</span></p>
+        <h3>B.Tech, EEE</h3>
+        <p class="stop-where">VIT Chennai</p>
+        <p>Electrical and Electronics Engineering, with the projects that pulled me toward AI and computer vision.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="sec skills" id="skills" aria-labelledby="skills-h">
+    <div class="sec-head">
+      <p class="kicker mono">Toolkit</p>
+      <h2 id="skills-h" tabindex="-1">Skills</h2>
+    </div>
+    <ul class="skill-groups">
+      <li class="card" data-rise><h3>Languages</h3><ul class="chips"><li class="chip">Python</li><li class="chip">TypeScript</li><li class="chip">JavaScript</li><li class="chip">C++</li><li class="chip">Java</li></ul></li>
+      <li class="card" data-rise><h3>AI and ML</h3><ul class="chips"><li class="chip">Claude API</li><li class="chip">OpenAI API</li><li class="chip">LangChain</li><li class="chip">RAG</li><li class="chip">PyTorch</li><li class="chip">OpenCV</li><li class="chip">YOLOv8</li></ul></li>
+      <li class="card" data-rise><h3>Web and backend</h3><ul class="chips"><li class="chip">React</li><li class="chip">Node.js</li><li class="chip">FastAPI</li><li class="chip">Flask</li><li class="chip">Prisma</li></ul></li>
+      <li class="card" data-rise><h3>Data and cloud</h3><ul class="chips"><li class="chip">PostgreSQL</li><li class="chip">Redis</li><li class="chip">Docker</li><li class="chip">Kubernetes</li><li class="chip">Entra ID</li></ul></li>
+      <li class="card" data-rise><h3>Hardware</h3><ul class="chips"><li class="chip">Arduino</li><li class="chip">Embedded C</li></ul></li>
+    </ul>
+  </section>
+
+  <section class="sec contact" id="contact" aria-labelledby="contact-h">
+    <div class="sec-head">
+      <p class="kicker mono">Contact</p>
+      <h2 id="contact-h" tabindex="-1">Get in touch</h2>
+      <p class="lede">Email me, or find me on LinkedIn and GitHub.</p>
+    </div>
+    <div class="card contact-card" data-rise>
+      <div>
+        <p class="row-label mono">Email</p>
+        <div class="email-row">
+          <a class="email" id="email" href="mailto:vaibhavdhir01@gmail.com">vaibhavdhir01@gmail.com</a>
+          <button type="button" class="pill copy-btn js-only" id="copy-email">Copy</button>
+        </div>
+        <p class="sr-only" role="status" id="copy-status"></p>
+      </div>
+      <div class="links">
+        <a class="btn btn-glass" href="https://www.linkedin.com/in/vaibhav-dhir">LinkedIn</a>
+        <a class="btn btn-glass" href="https://github.com/Vd421">GitHub</a>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>Vaibhav Dhir. The globe is generated in code: no images, no models.</footer>
+
+<!-- One dialog, filled from the static project cards -->
+<div class="pd" id="pd" hidden>
+  <div class="pd-scrim" id="pd-scrim"></div>
+  <div class="pd-card" id="pd-card" role="dialog" aria-modal="true" aria-labelledby="pd-title" tabindex="-1">
+    <div class="pd-bg" id="pd-bg"></div>
+    <div class="pd-body" id="pd-body">
+      <div class="pd-top">
+        <p class="pd-kick mono" id="pd-kick"></p>
+        <button type="button" class="pill" id="pd-close">Close</button>
+      </div>
+      <p class="badge mono" id="pd-main" hidden><span class="dot" aria-hidden="true"></span>Main project</p>
+      <h3 id="pd-title"></h3>
+      <p class="pd-sum" id="pd-sum"></p>
+      <h4>Goal</h4><p class="pd-goal" id="pd-goal"></p>
+      <h4>Stack</h4><ul class="chips" id="pd-stack"></ul>
+    </div>
+  </div>
+</div>
+
+<a class="ctl dock-static" href="mailto:vaibhavdhir01@gmail.com">Email me</a>
+<div class="talk seq" id="talk">
+  <div class="talk-inner">
+    <canvas class="goo" id="goo" aria-hidden="true"></canvas>
+    <button class="pill-btn ctl" id="talk-pill" type="button" aria-expanded="false" aria-controls="talk-menu">
+      <span class="pill-in" id="pill-in"><span class="dot" aria-hidden="true"></span>Let's talk</span>
+    </button>
+    <div class="bubbles" id="talk-menu">
+      <a class="tb ctl" id="b-email" href="mailto:vaibhavdhir01@gmail.com"><span class="b-label">Email me</span></a>
+      <button class="tb ctl" id="b-ask" type="button" aria-expanded="false" aria-controls="ask-panel"><span class="b-label">Ask my AI</span></button>
+    </div>
+  </div>
+</div>
+<section class="ask" id="ask-panel" role="dialog" aria-labelledby="ask-title" aria-describedby="ask-note" hidden>
+  <div class="ask-head">
+    <h2 id="ask-title">Ask my AI</h2>
+    <button class="x" id="ask-close" type="button" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9m0-9l-9 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>
+    </button>
+  </div>
+  <form id="ask-form" novalidate>
+    <label for="ask-q">Your question</label>
+    <div class="ask-row">
+      <input id="ask-q" name="question" type="text" autocomplete="off" enterkeyhint="send" placeholder="What do you work on?">
+      <button class="send" type="submit">Ask</button>
+    </div>
+  </form>
+  <p class="note" id="ask-note">Coming soon: answers grounded in my resume.</p>
+  <p class="ask-status" id="ask-status" role="status"></p>
+</section>
+
+<script type="module">
+const root = document.documentElement;
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+const params = new URLSearchParams(location.search);
+const FREEZE = params.has("t") ? Math.max(0, parseFloat(params.get("t")) || 0) : null;
+const ANYGL = params.has("anygl");
+const KEY = "vd-globe-intro";
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const CDN = "https://cdn.jsdelivr.net/npm/";
+
+const clamp01 = (x) => Math.min(1, Math.max(0, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, x) => { const k = clamp01((x - a) / (b - a)); return k * k * (3 - 2 * k); };
+const easeOut3 = (x) => 1 - Math.pow(1 - x, 3);
+const easeIn2 = (x) => x * x;
+
+const bg = $("#bg"), nameEl = $("#name"), skipBtn = $("#skip"), pauseBtn = $("#pause"), replayBtn = $("#replay");
+const seqEls = [...$$(".page1 .seq"), $("#bar"), $("#talk")];
+
+/* ---------- Intro timelines (seconds) ----------
+   3D: dust drifts in and forms the globe · holds, rotating · blasts · re-converges into the name ·
+       the DOM h1 takes over · copy rises in · the dust leaves the letters and re-forms the globe behind.
+   2D: the globe forms · scales up and fades · copy rises in · the globe returns in the background. */
+const TL3 = { formEnd: 2.0, blast: 2.75, blastDur: 0.6, name: 3.1, nameDur: 1.0, h1: [4.2, 4.5], nameFade: [4.2, 4.6], seq: 4.4, reform: 4.5, reformDur: 0.9, end: 5.4 };
+const TL2 = { formEnd: 1.0, up: 1.3, upDur: 0.5, h1: [1.45, 1.8], seq: 1.55, bgIn: [1.75, 2.45], end: 2.45 };
+const INTRO_SPIN = 0.42, AMBIENT_SPIN = 0.1;
+const DEADLINE_MS = 2000;   // the canvas must be running by then, or page one shows without the intro
+
+/* ---------- Poses: where the globe sits for each section (fractions of the viewport; r of min(vw, vh)) ---------- */
+const SECTIONS = ["about", "work", "experience", "skills", "contact"];
+const POSE_WIDE = {
+  about:      { x: 0.73, y: 0.5,  r: 0.42, a: 0.95, tilt: 0 },
+  work:       { x: 0.5,  y: 0.5,  r: 0.52, a: 0.4,  tilt: 0.12 },
+  experience: { x: 0.2,  y: 0.52, r: 0.34, a: 0.8,  tilt: 0.55 },
+  skills:     { x: 0.86, y: 0.24, r: 0.15, a: 0.9,  tilt: -0.15 },
+  contact:    { x: 0.5,  y: 0.55, r: 0.5,  a: 1.0,  tilt: 0.22 },
+};
+const POSE_NARROW = {
+  about:      { x: 0.5,  y: 0.3,  r: 0.46, a: 0.5,  tilt: 0 },
+  work:       { x: 0.5,  y: 0.5,  r: 0.5,  a: 0.3,  tilt: 0.12 },
+  experience: { x: 0.15, y: 0.5,  r: 0.42, a: 0.32, tilt: 0.55 },
+  skills:     { x: 0.82, y: 0.18, r: 0.22, a: 0.55, tilt: -0.15 },
+  contact:    { x: 0.5,  y: 0.3,  r: 0.48, a: 0.5,  tilt: 0.22 },
+};
+
+/* ---------- Capability gate (cheap; before downloading three) ---------- */
+function gate() {
+  if (RM) return { ok: false, why: "reduced-motion" };
+  if (params.has("flat")) return { ok: false, why: "forced-2d" };
+  const fine = matchMedia("(pointer: fine)").matches;
+  if (!(fine || innerWidth >= 900)) return { ok: false, why: "small-touch" };
+  let gl = null;
+  try { gl = document.createElement("canvas").getContext("webgl2", { failIfMajorPerformanceCaveat: !ANYGL }); } catch (e) { gl = null; }
+  if (!gl) return { ok: false, why: ANYGL ? "no-webgl2" : "no-webgl2-or-software-gpu" };
+  const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+  const gpu = String(dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+  gl.getExtension("WEBGL_lose_context")?.loseContext();
+  if (!ANYGL && /swiftshader|llvmpipe|softpipe|software|microsoft basic render/i.test(gpu)) return { ok: false, why: "software-gpu" };
+  const lite = params.has("full") ? false : params.has("lite") || !fine || innerWidth < 900 || (navigator.hardwareConcurrency || 8) <= 4;
+  return { ok: true, lite };
+}
+const cap = gate();
+
+/* ---------- Shared state ---------- */
+const S = (window.__globe = {
+  path: RM ? "static" : cap.ok ? "3d-pending" : "2d", reason: cap.why || null, info: null,
+  paused: false, time: 0, spin: 0, scrollP: 0, proxy: null, dim: 1, dimTarget: 1, appear: 1,
+  keys: [], wide: innerWidth >= 900,
+});
+const intro = (S.intro = { active: false, mode: null, start: 0, t: 0, frozen: false, byKey: false });
+let R = null;                 // the active renderer (3D or 2D)
+let lenis = null;
+
+/* ---------- Pose keys from section positions ---------- */
+function computeKeys() {
+  S.wide = innerWidth >= 900;
+  const set = S.wide ? POSE_WIDE : POSE_NARROW, vh = innerHeight;
+  const max = Math.max(1, document.documentElement.scrollHeight - vh);
+  let prev = 0;
+  S.keys = SECTIONS.map((id, i) => {
+    const sec = document.getElementById(id);
+    const el = (id === "work" && $("#field.float")) || sec;
+    const r = el.getBoundingClientRect(), top = r.top + scrollY;
+    let p = i === 0 ? 0 : clamp01((top + r.height / 2 - vh / 2) / max);
+    p = Math.max(prev, p); prev = p;
+    return { p, pose: set[id] };
+  });
+}
+function poseAt(p) {
+  const k = S.keys;
+  if (!k.length) return (S.wide ? POSE_WIDE : POSE_NARROW).about;
+  if (p <= k[0].p) return k[0].pose;
+  for (let i = 0; i < k.length - 1; i++) {
+    if (p <= k[i + 1].p) {
+      const a = k[i], b = k[i + 1], t = smooth(0, 1, (p - a.p) / Math.max(1e-6, b.p - a.p));
+      const o = {};
+      for (const f in a.pose) o[f] = lerp(a.pose[f], b.pose[f], t);
+      return o;
+    }
+  }
+  return k[k.length - 1].pose;
+}
+function rawProgress() { return clamp01(scrollY / Math.max(1, document.documentElement.scrollHeight - innerHeight)); }
+
+/* ---------- Particle sampling: a sphere with dust clustered toward the poles, plus a faint halo ---------- */
+function sampleSphere(n, rnd = Math.random) {
+  const P = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    let y;
+    if (rnd() < 0.7) { const s = rnd() * 2 - 1; y = Math.sign(s) * Math.cbrt(Math.abs(s)); } // area density ∝ y²: dense caps
+    else y = rnd() * 2 - 1;
+    const th = rnd() * Math.PI * 2, rr = Math.sqrt(Math.max(0, 1 - y * y));
+    let rad = 1 + (rnd() - 0.5) * 0.014;
+    if (rnd() < 0.05) rad = 1.03 + Math.pow(rnd(), 2.2) * 0.4;
+    P[i * 3] = rr * Math.cos(th) * rad; P[i * 3 + 1] = y * rad; P[i * 3 + 2] = rr * Math.sin(th) * rad;
+  }
+  return P;
+}
+
+/* ---------- Name targets: draw the h1's glyphs where the DOM lays them out, read back the ink ---------- */
+function sampleName() {
+  const rect = nameEl.getBoundingClientRect();
+  if (!rect.width) return null;
+  const cs = getComputedStyle(nameEl), pad = 24;
+  const W = Math.ceil(rect.width) + pad * 2, H = Math.ceil(rect.height) + pad * 2, ox = rect.left - pad, oy = rect.top - pad;
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  g.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  g.fillStyle = "#fff"; g.textBaseline = "alphabetic";
+  const m = g.measureText("Hg");
+  const asc = m.fontBoundingBoxAscent || parseFloat(cs.fontSize) * 0.9, desc = m.fontBoundingBoxDescent || parseFloat(cs.fontSize) * 0.22;
+  const range = document.createRange();
+  const walker = document.createTreeWalker(nameEl, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const s = node.textContent;
+    for (let i = 0; i < s.length; i++) {
+      if (/\s/.test(s[i])) continue;
+      range.setStart(node, i); range.setEnd(node, i + 1);
+      const r = range.getBoundingClientRect();
+      if (!r.width) continue;
+      g.fillText(s[i], r.left - ox, r.top + r.height * (asc / (asc + desc)) - oy);
+    }
+  }
+  const d = g.getImageData(0, 0, W, H).data, pts = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (d[(y * W + x) * 4 + 3] > 140) pts.push(x + ox, y + oy, clamp01((x + ox - rect.left) / rect.width));
+  }
+  return pts.length ? new Float32Array(pts) : null;
+}
+
+/* ---------- Single frame scheduler (sleeps when nothing moves) ---------- */
+let raf = 0, last = 0;
+function wake() { if (!raf && !RM) raf = requestAnimationFrame(tick); }
+function tick(now) {
+  raf = 0;
+  if (step(now)) wake(); else last = 0;
+}
+
+function introPose() {
+  const vw = innerWidth, vh = innerHeight;
+  return { cx: vw / 2, cy: vh / 2, r: Math.min(vw, vh) * (vw < 600 ? 0.4 : 0.34) };
+}
+function pxPose(p) {
+  const vw = innerWidth, vh = innerHeight, m = Math.min(vw, vh);
+  return { cx: p.x * vw, cy: p.y * vh, r: p.r * m, a: p.a, tilt: p.tilt };
+}
+
+function step(now) {
+  const raw = last ? (now - last) / 1000 : 0, dt = raw ? Math.min(0.1, raw) : 1 / 60;
+  last = now;
+  let more = false;
+  if (!S.paused) S.time += dt;
+  if (intro.active) more = updateIntro(now) || FREEZE != null;
+
+  const target = S.proxy ? S.proxy.p : rawProgress();
+  S.scrollP += (target - S.scrollP) * (S.proxy ? 1 : Math.min(1, dt * 6));
+  if (Math.abs(target - S.scrollP) > 1e-4) more = true;
+  S.dim += (S.dimTarget - S.dim) * Math.min(1, dt * 6);
+  if (Math.abs(S.dimTarget - S.dim) > 1e-3) more = true;
+  if (S.appear < 1) { S.appear = Math.min(1, S.appear + dt / 0.9); more = true; }
+  if (!S.paused && !intro.active) { S.spin += dt * AMBIENT_SPIN; more = true; }
+
+  const pose = pxPose(poseAt(S.scrollP));
+  if (R) {
+    R.frame({
+      intro: intro.active, t: intro.t,
+      rotY: intro.active ? INTRO_SPIN * intro.t : S.spin + S.scrollP * Math.PI * 2.2,
+      rotX: intro.active ? 0.42 : 0.42 + pose.tilt + S.scrollP * 0.25,
+      time: intro.active ? intro.t : S.time,
+      pose, intro0: introPose(), alpha: pose.a * S.dim * S.appear, paused: S.paused,
+    });
+  }
+  if (updateDrift(dt)) more = true;
+  return more;
+}
+
+/* ---------- Intro control ---------- */
+function setSeq(el, e) {
+  el.style.opacity = e.toFixed(3);
+  el.style.transform = e < 1 ? `translateY(${(12 * (1 - e)).toFixed(2)}px)` : "";
+}
+function hideCopy() { nameEl.style.opacity = "0"; for (const el of seqEls) setSeq(el, 0); }
+function clearCopy() { nameEl.style.opacity = ""; for (const el of seqEls) { el.style.opacity = ""; el.style.transform = ""; } skipBtn.style.opacity = ""; }
+
+/** The canvas is running: start the intro if it is still welcome, else show page one as is. */
+function canvasReady() {
+  if (!root.classList.contains("intro-wait") || intro.active) return;
+  if (FREEZE != null || performance.now() < DEADLINE_MS) startIntro();
+  else { root.classList.remove("intro-wait"); S.appear = 0; wake(); }
+}
+
+function startIntro() {
+  if (RM || !R) return;
+  hideCopy();
+  root.classList.remove("intro-wait");
+  root.classList.add("intro-live");
+  if (lenis) lenis.scrollTo(0, { immediate: true }); else scrollTo(0, 0);
+  S.scrollP = 0; if (S.proxy) S.proxy.p = 0;
+  intro.active = true; intro.frozen = false; intro.mode = R.kind; intro.t = 0;
+  intro.start = performance.now();
+  S.appear = 1;
+  if (R.kind === "3d") {
+    R.setName(sampleName());
+    // fonts may arrive after the first sample: resample while the letters are still unformed
+    document.fonts?.ready.then(() => { if (intro.active && intro.t < TL3.name + 0.2) R.setName(sampleName()); });
+  }
+  wake();
+}
+
+function updateIntro(now) {
+  const tl = intro.mode === "3d" ? TL3 : TL2;
+  const t = Math.min(FREEZE != null ? FREEZE : (now - intro.start) / 1000, tl.end);
+  intro.t = t;
+  nameEl.style.opacity = smooth(tl.h1[0], tl.h1[1], t).toFixed(3);
+  seqEls.forEach((el, i) => setSeq(el, easeOut3(clamp01((t - (tl.seq + i * 0.1)) / 0.3))));
+  skipBtn.style.opacity = String(1 - clamp01((t - tl.h1[0]) / 0.3));
+  if (FREEZE != null) { intro.frozen = true; return false; }
+  if (t >= tl.end) { finishIntro(); return false; }
+  return true;
+}
+
+function finishIntro() {
+  const tl = intro.mode === "3d" ? TL3 : TL2;
+  intro.active = false;
+  S.spin = INTRO_SPIN * Math.min(intro.t, tl.end);
+  root.classList.remove("intro-live", "intro-wait");
+  clearCopy();
+  try { sessionStorage.setItem(KEY, "1"); } catch (e) {}
+  const ae = document.activeElement;
+  if (ae === skipBtn || (intro.byKey && (!ae || ae === document.body))) nameEl.focus({ preventScroll: true });
+  intro.byKey = false;
+  wake();
+}
+
+function skipIntro(byKey) {
+  if (root.classList.contains("intro-wait") && !intro.active) { // canvas never started: just show the page
+    root.classList.remove("intro-wait"); clearCopy();
+    if (byKey || document.activeElement === skipBtn) nameEl.focus({ preventScroll: true });
+    return;
+  }
+  if (!intro.active || intro.frozen) return;
+  intro.byKey = !!byKey;
+  S.appear = 0;                       // the globe fades back in at its background pose
+  for (const el of [nameEl, ...seqEls]) el.style.transition = "opacity 150ms ease-out, transform 150ms ease-out";
+  nameEl.style.opacity = "1"; for (const el of seqEls) setSeq(el, 1);
+  const tl = intro.mode === "3d" ? TL3 : TL2;
+  intro.t = tl.end;
+  finishIntro();
+  setTimeout(() => { for (const el of [nameEl, ...seqEls]) el.style.transition = ""; }, 200);
+}
+
+skipBtn.addEventListener("click", () => skipIntro(false));
+document.addEventListener("keydown", (e) => {
+  if (!intro.active && !root.classList.contains("intro-wait")) return;
+  if (e.key === "Tab" || e.key === "Shift" || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === " " || e.key === "Enter") { if (document.activeElement === skipBtn) return; e.preventDefault(); }
+  skipIntro(true);
+});
+addEventListener("wheel", () => { if (intro.active) skipIntro(false); }, { passive: true });
+addEventListener("touchstart", () => { if (intro.active) skipIntro(false); }, { passive: true });
+document.addEventListener("focusin", (e) => { if ((intro.active || root.classList.contains("intro-wait")) && e.target !== skipBtn) skipIntro(true); });
+replayBtn.addEventListener("click", () => { if (!RM && R && !intro.active) startIntro(); });
+// JS failsafe on top of the CSS one
+setTimeout(() => { if (FREEZE == null && (intro.active || root.classList.contains("intro-wait"))) { if (intro.active) skipIntro(false); else { root.classList.remove("intro-wait"); clearCopy(); } } }, 9000);
+
+/* ---------- Pause control (WCAG 2.2.2): stops rotation, twinkle and drift ---------- */
+pauseBtn.addEventListener("click", () => {
+  S.paused = !S.paused;
+  pauseBtn.querySelector(".long").textContent = S.paused ? "Resume motion" : "Pause motion";
+  pauseBtn.querySelector(".short").textContent = S.paused ? "Resume" : "Pause";
+  wake();
+});
+
+/* ---------- Renderer: 2D canvas fallback (orthographic, fillRect) ---------- */
+function init2D() {
+  const canvas = document.createElement("canvas");
+  const g = canvas.getContext("2d", { alpha: false });
+  if (!g) return null;
+  const wide = innerWidth >= 900;
+  const N = wide ? 3600 : 2400;
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const P = sampleSphere(N, rnd), RN = new Float32Array(N * 2), D = new Float32Array(N * 2);
+  for (let i = 0; i < N; i++) { RN[i * 2] = rnd(); RN[i * 2 + 1] = rnd(); }
+  const BINS = 8, bx = Array.from({ length: BINS }, () => new Float32Array(N * 6)), bc = new Int32Array(BINS);
+  let W = 1, H = 1, dpr = 1;
+  function layout() {
+    const r = bg.getBoundingClientRect();
+    W = Math.max(1, r.width); H = Math.max(1, r.height);
+    dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    for (let i = 0; i < N; i++) { D[i * 2] = RN[i * 2] * W * 1.2 - W * 0.1; D[i * 2 + 1] = ((RN[i * 2 + 1] * 7.3) % 1) * H; }
+  }
+  /** Push one globe into the bins. form: per-point forming progress source (null = formed). */
+  function globe(cx, cy, R, alpha, rotX, rotY, time, form, still) {
+    if (alpha <= 0.002) return;
+    const sy = Math.sin(rotY), cyy = Math.cos(rotY), sx = Math.sin(rotX), cxx = Math.cos(rotX);
+    for (let i = 0; i < N; i++) {
+      const x0 = P[i * 3], y0 = P[i * 3 + 1], z0 = P[i * 3 + 2];
+      const x1 = x0 * cyy + z0 * sy, z1 = -x0 * sy + z0 * cyy;     // spin about the pole
+      const y2 = y0 * cxx - z1 * sx, z2 = y0 * sx + z1 * cxx;      // tilt toward the viewer
+      const len = Math.hypot(x1, y2, z2) || 1, facing = z2 / len, limb = 1 - Math.abs(facing);
+      let shade = (0.42 + 0.58 * Math.pow(limb, 1.8)) * (facing < 0 ? 0.55 : 1);
+      const r0 = RN[i * 2], r1 = RN[i * 2 + 1];
+      if (!still) shade *= 0.74 + 0.26 * Math.sin(time * (0.7 + 2.6 * r1) + r0 * 60);
+      let px = cx + x1 * R, py = cy - y2 * R, a = alpha * shade;
+      if (form != null) {
+        const f = easeOut3(clamp01((form - r0 * 0.45) / 0.55));
+        px = lerp(D[i * 2], px, f); py = lerp(D[i * 2 + 1], py, f); a *= lerp(0.25, 1, f);
+      }
+      const b = Math.min(BINS - 1, Math.floor(a * BINS));
+      if (b < 0 || a < 0.03) continue;
+      const s = limb > 0.82 ? 1.6 : 1.1, o = bc[b] * 3;
+      bx[b][o] = px * dpr; bx[b][o + 1] = py * dpr; bx[b][o + 2] = Math.max(1, s * dpr);
+      bc[b]++;
+    }
+  }
+  function frame(st) {
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = "#000"; g.fillRect(0, 0, canvas.width, canvas.height);
+    bc.fill(0);
+    const p = st.pose;
+    if (st.intro) {
+      const t = st.t, i0 = st.intro0;
+      const up = easeIn2(clamp01((t - TL2.up) / TL2.upDur));
+      if (up < 1) globe(i0.cx, i0.cy, i0.r * (1 + 0.9 * up), 1 - up, st.rotX, st.rotY, st.time, t < TL2.formEnd ? t / TL2.formEnd : null, false);
+      const k = smooth(TL2.bgIn[0], TL2.bgIn[1], t);
+      if (k > 0) globe(p.cx, p.cy, p.r * (0.9 + 0.1 * k), st.alpha * k, st.rotX, st.rotY, st.time, null, false);
+    } else {
+      globe(p.cx, p.cy, p.r, st.alpha, st.rotX, st.rotY, st.time, null, RM);
+    }
+    for (let b = 0; b < BINS; b++) {
+      const n = bc[b]; if (!n) continue;
+      g.fillStyle = `rgba(238,242,255,${((b + 0.6) / BINS).toFixed(3)})`;
+      const arr = bx[b];
+      for (let j = 0; j < n; j++) { const o = j * 3, s = arr[o + 2]; g.fillRect(arr[o] - s / 2, arr[o + 1] - s / 2, s, s); }
+    }
+  }
+  function dispose() { canvas.remove(); }
+  bg.appendChild(canvas);
+  layout();
+  return { kind: "2d", frame, layout, dispose, setName() {}, info: { points: N } };
+}
+
+/* ---------- Renderer: three.js Points with a custom shader ---------- */
+async function initGL(lite) {
+  const THREE = await import("three");
+  const canvas = document.createElement("canvas");
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: "high-performance", failIfMajorPerformanceCaveat: !ANYGL });
+  } catch (e) { return null; }
+  const maxDpr = lite ? 1.5 : 2;
+  let dpr = Math.min(devicePixelRatio || 1, maxDpr);
+  renderer.setPixelRatio(dpr);
+  renderer.setClearColor(0x000000, 1);
+  const scene = new THREE.Scene();
+  const FOV = 35, DIST = 10;
+  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
+  camera.position.set(0, 0, DIST);
+
+  const N = lite ? 9000 : 36000;
+  const aGlobe = sampleSphere(N), aDust = new Float32Array(N * 3), aName = new Float32Array(N * 3), aRnd = new Float32Array(N * 4);
+  const dustSeed = new Float32Array(N * 3);
+  for (let i = 0; i < N * 4; i++) aRnd[i] = Math.random();
+  for (let i = 0; i < N * 3; i++) dustSeed[i] = Math.random();
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(aGlobe, 3));   // unused by the shader except as the globe point
+  geo.setAttribute("aDust", new THREE.BufferAttribute(aDust, 3));
+  const nameAttr = new THREE.BufferAttribute(aName, 3);
+  geo.setAttribute("aName", nameAttr);
+  geo.setAttribute("aRnd", new THREE.BufferAttribute(aRnd, 4));
+  geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e4);
+
+  const U = {
+    uRot: { value: new THREE.Matrix3() }, uSpin: { value: new THREE.Matrix3() },
+    uCenter: { value: new THREE.Vector3() }, uRadius: { value: 1 },
+    uIntro: { value: 0 }, uForm: { value: 1 }, uBlast: { value: 0 }, uName: { value: 0 }, uReform: { value: 0 },
+    uNameA: { value: 1 }, uAlpha: { value: 1 }, uTime: { value: 0 },
+    uSize: { value: lite ? 1.5 : 1.3 }, uDpr: { value: dpr }, uDist: { value: DIST },
+  };
+  const mat = new THREE.ShaderMaterial({
+    uniforms: U, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
+    vertexShader: /* glsl */`
+      uniform mat3 uRot, uSpin; uniform vec3 uCenter; uniform float uRadius;
+      uniform float uIntro, uForm, uBlast, uName, uReform, uNameA, uAlpha, uTime, uSize, uDpr, uDist;
+      attribute vec3 aDust, aName; attribute vec4 aRnd;
+      varying float vA, vLimb;
+      float eio(float x){ return x < 0.5 ? 4.0 * x * x * x : 1.0 - pow(-2.0 * x + 2.0, 3.0) * 0.5; }
+      void main(){
+        vec3 G = uRot * position;
+        vec3 gp = uCenter + G * uRadius;
+        vec3 p = gp; float gw = 1.0; float a = 1.0;
+        if (uIntro > 0.5) {
+          float f = eio(clamp((uForm - aRnd.x * 0.45) / 0.55, 0.0, 1.0));
+          vec3 drift = vec3(sin(uTime * 0.5 + aRnd.y * 6.283), cos(uTime * 0.41 + aRnd.z * 6.283), sin(uTime * 0.33 + aRnd.w * 6.283)) * 0.18;
+          p = mix(aDust + drift, gp, f); gw = f; a = mix(0.75, 1.0, f);
+          if (uBlast > 0.0) {
+            float m = 0.36 + 0.26 * aRnd.y + 1.3 * pow(aRnd.y, 8.0);   // a shell, with a few strays flung far
+            vec3 jit = (aRnd.xzw - 0.5) * 0.16;
+            vec3 bv = G * m + jit; bv.z *= 0.6;
+            vec3 bp = uCenter + uSpin * (G + bv * uBlast) * uRadius;
+            p = bp; gw = 1.0 - 0.6 * uBlast; a = 1.0 + 0.8 * sin(3.14159 * min(1.0, uBlast * 1.6));
+            if (uName > 0.0) {
+              float e = clamp((uName - (aName.z * 0.32 + aRnd.w * 0.16)) / 0.48, 0.0, 1.0); e = 1.0 - pow(1.0 - e, 3.0);
+              vec3 np = vec3(aName.xy, 0.0);
+              p = mix(bp, np, e) + vec3(0.0, 0.0, 2.2) * sin(3.14159 * e) * (aRnd.x - 0.35);
+              gw = 0.0; a = mix(0.85, uNameA, e);
+            }
+          }
+          if (uReform > 0.0) {
+            float e = eio(clamp((uReform - aRnd.x * 0.35) / 0.65, 0.0, 1.0));
+            p = mix(vec3(aName.xy, 0.0), gp, e) + vec3(0.0, 0.0, 1.2) * sin(3.14159 * e) * (aRnd.y - 0.5);
+            gw = e; a = mix(uNameA * 0.7, 1.0, e * e);
+          }
+        }
+        vec3 toCam = normalize(cameraPosition - gp);
+        float facing = dot(normalize(G), toCam);
+        float limb = 1.0 - abs(facing);
+        float shade = mix(0.42, 1.0, pow(limb, 1.8)) * (facing < 0.0 ? 0.55 : 1.0);
+        float tw = 0.74 + 0.26 * sin(uTime * (0.7 + 2.6 * aRnd.z) + aRnd.y * 60.0);
+        float sp = pow(max(0.0, sin(uTime * (0.35 + 0.9 * aRnd.x) + aRnd.w * 80.0)), 24.0);
+        vA = uAlpha * a * mix(1.0, shade, gw) * (tw + sp * 1.4);
+        vLimb = limb * gw;
+        vec4 mv = viewMatrix * vec4(p, 1.0);
+        float size = uSize * (0.65 + 0.7 * aRnd.z) * (1.0 + 0.6 * pow(limb, 3.0) * gw);
+        gl_PointSize = clamp(size * uDpr * (uDist / max(0.5, -mv.z)), 1.0, 3.2 * uDpr);
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: /* glsl */`
+      varying float vA, vLimb;
+      void main(){
+        vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0;
+        if (d > 1.0) discard;
+        float a = (1.0 - d) * (1.0 - d);
+        vec3 col = mix(vec3(0.95, 0.97, 1.0), vec3(0.70, 0.80, 1.0), vLimb * 0.35);
+        gl_FragColor = vec4(col, min(1.0, a * vA));
+      }`,
+  });
+  const points = new THREE.Points(geo, mat);
+  points.frustumCulled = false;
+  scene.add(points);
+
+  let W = 1, H = 1, wpp = 0.01;
+  function layout() {
+    W = Math.max(1, innerWidth); H = Math.max(1, innerHeight);
+    renderer.setSize(W, H, false);
+    camera.aspect = W / H; camera.updateProjectionMatrix();
+    wpp = (2 * Math.tan(THREE.MathUtils.degToRad(FOV / 2)) * DIST) / H;
+    const hw = (W / 2) * wpp * 1.25, hh = (H / 2) * wpp * 1.25;
+    for (let i = 0; i < N; i++) {
+      aDust[i * 3] = (dustSeed[i * 3] * 2 - 1) * hw;
+      aDust[i * 3 + 1] = (dustSeed[i * 3 + 1] * 2 - 1) * hh;
+      aDust[i * 3 + 2] = -5 + dustSeed[i * 3 + 2] * 7.5;
+    }
+    geo.attributes.aDust.needsUpdate = true;
+  }
+  const toWorld = (px, py, out) => out.set((px - W / 2) * wpp, -(py - H / 2) * wpp, 0);
+
+  /** pts: [x, y, order] in viewport px. Every ink pixel gets particles; extra particles double up. */
+  function setName(pts) {
+    if (!pts) return;
+    const M = pts.length / 3, idx = new Uint32Array(M);
+    for (let i = 0; i < M; i++) idx[i] = i;
+    for (let i = M - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; const t = idx[i]; idx[i] = idx[j]; idx[j] = t; }
+    for (let i = 0; i < N; i++) {
+      const k = idx[i % M] * 3;
+      aName[i * 3] = (pts[k] + Math.random() - 0.5 - W / 2) * wpp;
+      aName[i * 3 + 1] = -(pts[k + 1] + Math.random() - 0.5 - H / 2) * wpp;
+      aName[i * 3 + 2] = pts[k + 2];
+    }
+    nameAttr.needsUpdate = true;
+    info.namePixels = M;
+  }
+
+  const m4 = new THREE.Matrix4(), eu = new THREE.Euler(), cw = new THREE.Vector3();
+  const perf = { acc: 0, n: 0, stage: 0 }, info = { dpr, points: N, lite, namePixels: 0, avgFrameMs: 0, droppedDpr: false };
+  let lastNow = 0, disposed = false;
+
+  function frame(st) {
+    if (disposed) return;
+    const now = performance.now(), raw = lastNow ? (now - lastNow) / 1000 : 0; lastNow = now;
+    eu.set(st.rotX, st.rotY, 0, "XYZ"); m4.makeRotationFromEuler(eu); U.uRot.value.setFromMatrix4(m4);
+    U.uTime.value = st.time;
+    let pose = st.pose, alpha = st.alpha;
+    if (st.intro) {
+      const t = st.t;
+      U.uIntro.value = 1;
+      U.uForm.value = clamp01(t / TL3.formEnd);
+      const b = clamp01((t - TL3.blast) / TL3.blastDur);
+      U.uBlast.value = t >= TL3.blast ? 1 - Math.pow(1 - b, 4) : 0;
+      m4.makeRotationY(0.9 * U.uBlast.value); U.uSpin.value.setFromMatrix4(m4);
+      U.uName.value = t >= TL3.name ? clamp01((t - TL3.name) / TL3.nameDur) : 0;
+      U.uNameA.value = 1 - 0.85 * smooth(TL3.nameFade[0], TL3.nameFade[1], t);
+      const rf = t >= TL3.reform ? clamp01((t - TL3.reform) / TL3.reformDur) : 0;
+      U.uReform.value = rf;
+      if (rf > 0) { alpha = lerp(1, st.alpha, smooth(TL3.reform, TL3.end, t)); }
+      else { pose = st.intro0; alpha = 1; }
+    } else {
+      U.uIntro.value = 0; U.uBlast.value = 0; U.uName.value = 0; U.uReform.value = 0;
+    }
+    toWorld(pose.cx, pose.cy, cw); U.uCenter.value.copy(cw);
+    U.uRadius.value = pose.r * wpp;
+    U.uAlpha.value = alpha;
+    renderer.render(scene, camera);
+
+    // adaptive quality: after ~1 s of slow frames drop DPR to 1, then thin the dust
+    if (raw && raw < 0.5 && !st.paused && perf.stage < 2 && FREEZE == null) {
+      perf.acc += raw; perf.n++;
+      if (perf.acc > 1) {
+        const avg = (perf.acc / perf.n) * 1000; info.avgFrameMs = Math.round(avg * 10) / 10;
+        if (avg > 24) {
+          if (perf.stage === 0 && renderer.getPixelRatio() > 1) { dpr = 1; renderer.setPixelRatio(1); U.uDpr.value = 1; layout(); info.droppedDpr = true; info.dpr = 1; }
+          else { geo.setDrawRange(0, Math.round(N * 0.6)); info.points = Math.round(N * 0.6); perf.stage = 2; }
+          if (perf.stage === 0) perf.stage = 1;
+        }
+        perf.acc = 0; perf.n = 0;
+      }
+    }
+  }
+  function dispose() { disposed = true; geo.dispose(); mat.dispose(); renderer.dispose(); canvas.remove(); }
+
+  bg.appendChild(canvas);
+  layout();
+  if (renderer.compileAsync) await renderer.compileAsync(scene, camera);
+  return { kind: "3d", frame, layout, setName, dispose, info };
+}
+
+/* ---------- Boot the renderer after first paint ---------- */
+function useRenderer(r) {
+  R = r; S.info = r.info; S.path = r.kind;
+  if (!intro.active && !root.classList.contains("intro-wait")) S.appear = 0;
+  if (RM) { renderStill(); return; }
+  wake();
+  requestAnimationFrame(() => canvasReady());   // one frame on screen before we hide anything
+}
+function renderStill() {
+  computeKeys();
+  const pose = pxPose((S.wide ? POSE_WIDE : POSE_NARROW).about);
+  R.frame({ intro: false, t: 0, rotY: 0.6, rotX: 0.42, time: 0, pose, intro0: introPose(), alpha: pose.a, paused: true });
+}
+function boot2D(reason) {
+  if (reason) S.reason = reason;
+  const r = init2D();
+  if (r) useRenderer(r);
+  else { root.classList.remove("intro-wait"); clearCopy(); S.path = "none"; }
+}
+requestAnimationFrame(() => setTimeout(() => {
+  computeKeys();
+  if (cap.ok) {
+    initGL(cap.lite).then((api) => {
+      if (!api) return boot2D("renderer-failed");
+      useRenderer(api);
+    }).catch((err) => { console.warn("[globe] 3D unavailable, using 2D:", err && err.message); boot2D("load-failed"); });
+  } else boot2D();
+}, 0));
+
+addEventListener("scroll", wake, { passive: true });
+let rzT = 0;
+addEventListener("resize", () => {
+  cancelAnimationFrame(rzT);
+  rzT = requestAnimationFrame(() => {
+    computeKeys(); layoutField();
+    if (R) { R.layout(); if (intro.active && R.kind === "3d" && intro.t < TL3.name) R.setName(sampleName()); }
+    if (RM && R) renderStill(); else wake();
+  });
+});
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { last = 0; wake(); } });
+addEventListener("pagehide", (e) => { if (!e.persisted && R) { R.dispose(); R = null; } });
+document.fonts?.ready.then(() => { computeKeys(); layoutField(); wake(); });
+
+/* ---------- Work: floating bubbles ---------- */
+const field = $("#field"), slots = $$(".slot", field);
+const mqFloat = matchMedia("(min-width: 1100px) and (prefers-reduced-motion: no-preference)");
+const drift = slots.map((s, i) => ({
+  slot: s, par: $(".par", s), btn: $(".bubble", s),
+  a1: 6 + (i * 37 % 7), a2: 5 + (i * 53 % 6), w1: 0.32 + (i % 3) * 0.07, w2: 0.27 + (i % 4) * 0.05, ph: i * 1.7, depth: 0.35 + ((i * 29) % 10) / 15,
+}));
+const ptr = { x: 0, y: 0, tx: 0, ty: 0 };
+let floatOn = false, fieldVisible = false;
+function layoutField() {
+  floatOn = mqFloat.matches;
+  field.classList.toggle("float", floatOn);
+  if (!floatOn) { for (const d of drift) { d.slot.style.left = d.slot.style.top = ""; d.par.style.transform = d.btn.style.transform = ""; } return; }
+  const W = field.clientWidth, H = field.clientHeight, n = drift.length;
+  drift.forEach((d, i) => {
+    const ang = -Math.PI * 0.62 + (i / n) * Math.PI * 2;
+    const w = d.btn.offsetWidth, h = d.btn.offsetHeight;
+    const x = W / 2 + Math.cos(ang) * W * 0.37, y = H / 2 + Math.sin(ang) * H * 0.36;
+    d.slot.style.left = Math.min(W - w / 2 - 8, Math.max(w / 2 + 8, x)) + "px";
+    d.slot.style.top = Math.min(H - h / 2 - 8, Math.max(h / 2 + 8, y)) + "px";
+  });
+}
+layoutField();
+mqFloat.addEventListener?.("change", () => { layoutField(); computeKeys(); wake(); });
+new IntersectionObserver((es) => { fieldVisible = es[0].isIntersecting; if (fieldVisible) wake(); }).observe(field);
+field.addEventListener("pointermove", (e) => {
+  if (!floatOn) return;
+  const r = field.getBoundingClientRect();
+  ptr.tx = ((e.clientX - r.left) / r.width) * 2 - 1; ptr.ty = ((e.clientY - r.top) / r.height) * 2 - 1;
+  wake();
+}, { passive: true });
+field.addEventListener("pointerleave", () => { ptr.tx = ptr.ty = 0; wake(); });
+function updateDrift(dt) {
+  if (!floatOn || !fieldVisible || RM) return false;
+  ptr.x += (ptr.tx - ptr.x) * Math.min(1, dt * 4); ptr.y += (ptr.ty - ptr.y) * Math.min(1, dt * 4);
+  const t = S.time;
+  for (const d of drift) {
+    d.btn.style.transform = `translate3d(${(d.a1 * Math.sin(t * d.w1 + d.ph)).toFixed(2)}px, ${(d.a2 * Math.cos(t * d.w2 + d.ph * 1.3)).toFixed(2)}px, 0)`;
+    d.par.style.transform = `translate3d(${(ptr.x * 14 * d.depth).toFixed(2)}px, ${(ptr.y * 10 * d.depth).toFixed(2)}px, 0)`;
+  }
+  return Math.abs(ptr.tx - ptr.x) > 1e-3 || Math.abs(ptr.ty - ptr.y) > 1e-3;
+}
+
+/* ---------- Project dialog: shared-element FLIP from the bubble ---------- */
+const pd = $("#pd"), pdCard = $("#pd-card"), pdBg = $("#pd-bg"), pdBody = $("#pd-body"), pdScrim = $("#pd-scrim"), pdClose = $("#pd-close");
+const outside = [$("main"), $("#bar"), $("#talk"), $("footer")];
+let openBtn = null, closing = false;
+const EASE = "cubic-bezier(0.2, 0, 0, 1)";
+function flipFrom(B, C) {
+  return `translate(${(B.left - C.left).toFixed(1)}px, ${(B.top - C.top).toFixed(1)}px) scale(${(B.width / C.width).toFixed(4)}, ${(B.height / C.height).toFixed(4)})`;
+}
+function openProject(btn) {
+  if (openBtn) return;
+  const src = document.getElementById(btn.dataset.src);
+  $("#pd-kick").textContent = $(".p-kick", src).textContent;
+  $("#pd-title").textContent = $("h3", src).textContent;
+  $("#pd-sum").textContent = $(".p-sum", src).textContent;
+  $("#pd-goal").textContent = $(".p-goal", src).textContent;
+  const stack = $("#pd-stack"); stack.textContent = "";
+  for (const li of $$(".p-stack li", src)) { const c = document.createElement("li"); c.className = "chip"; c.textContent = li.textContent; stack.appendChild(c); }
+  $("#pd-main").hidden = !src.querySelector(".badge");
+  openBtn = btn;
+  pd.hidden = false;
+  btn.setAttribute("aria-expanded", "true");
+  for (const el of outside) el.inert = true;
+  lenis?.stop();
+  field.classList.add("dim"); S.dimTarget = 0.3; wake();
+  const B = btn.getBoundingClientRect(), C = pdCard.getBoundingClientRect();
+  btn.classList.add("origin");
+  if (!RM) {
+    pdBg.animate([{ transform: flipFrom(B, C) }, { transform: "none" }], { duration: 380, easing: EASE });
+    pdBody.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 260, delay: 150, easing: EASE, fill: "backwards" });
+    pdScrim.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 250, easing: "ease-out" });
+  } else pd.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: "ease-out" });
+  pdClose.focus({ preventScroll: true });
+}
+function closeProject() {
+  if (!openBtn || closing) return;
+  closing = true;
+  const btn = openBtn;
+  const done = () => {
+    pd.hidden = true;
+    for (const a of pd.getAnimations({ subtree: true })) a.cancel();
+    btn.classList.remove("origin");
+    field.classList.remove("dim"); S.dimTarget = 1; wake();
+    for (const el of outside) el.inert = false;
+    lenis?.start();
+    btn.setAttribute("aria-expanded", "false");
+    btn.focus({ preventScroll: true });
+    openBtn = null; closing = false;
+  };
+  if (RM) { pd.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: "ease-out", fill: "forwards" }).finished.then(done); return; }
+  const B = btn.getBoundingClientRect(), C = pdCard.getBoundingClientRect();
+  pdBody.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 100, easing: "ease-out", fill: "forwards" });
+  pdScrim.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: "ease-out", fill: "forwards" });
+  pdBg.animate([{ transform: "none", opacity: 1 }, { transform: flipFrom(B, C), opacity: 1, offset: 0.85 }, { transform: flipFrom(B, C), opacity: 0 }],
+    { duration: 220, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" }).finished.then(done);
+}
+for (const d of drift) d.btn.addEventListener("click", () => openProject(d.btn));
+pdClose.addEventListener("click", closeProject);
+pdScrim.addEventListener("click", closeProject);
+pd.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { e.preventDefault(); closeProject(); return; }
+  if (e.key !== "Tab") return;
+  const f = $$("button, a[href], [tabindex]:not([tabindex='-1'])", pdCard).filter((el) => !el.hidden && el.offsetParent !== null);
+  if (!f.length) { e.preventDefault(); return; }
+  const first = f[0], lastEl = f[f.length - 1];
+  if (e.shiftKey && (document.activeElement === first || document.activeElement === pdCard)) { e.preventDefault(); lastEl.focus(); }
+  else if (!e.shiftKey && document.activeElement === lastEl) { e.preventDefault(); first.focus(); }
+});
+
+/* ---------- In-page links: smooth scroll + move focus to the section heading ---------- */
+document.addEventListener("click", (e) => {
+  const a = e.target.closest && e.target.closest('a[href^="#"]');
+  if (!a) return;
+  const el = document.getElementById(a.getAttribute("href").slice(1));
+  if (!el) return;
+  e.preventDefault();
+  const head = el.querySelector("h1, h2");
+  if (lenis) lenis.scrollTo(el, { duration: 1.2 });
+  else el.scrollIntoView({ behavior: RM ? "auto" : "smooth" });
+  head?.focus({ preventScroll: true });
+  history.replaceState(null, "", "#" + el.id);
+});
+
+/* ---------- Copy email ---------- */
+const copyBtn = $("#copy-email"), copyStatus = $("#copy-status"), EMAIL = "vaibhavdhir01@gmail.com";
+let copyT = 0;
+copyBtn.addEventListener("click", async () => {
+  let ok = false;
+  try { await navigator.clipboard.writeText(EMAIL); ok = true; } catch (e) {
+    const sel = getSelection(), r = document.createRange(); r.selectNodeContents($("#email")); sel.removeAllRanges(); sel.addRange(r);
+  }
+  copyBtn.textContent = ok ? "Copied" : "Selected";
+  copyStatus.textContent = ok ? "Email address copied." : "Email address selected. Press Ctrl+C or Cmd+C to copy.";
+  clearTimeout(copyT); copyT = setTimeout(() => { copyBtn.textContent = "Copy"; copyStatus.textContent = ""; }, 2000);
+});
+
+/* ---------- GSAP + ScrollTrigger + Lenis, after first paint ---------- */
+const loadScript = (src) => new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("failed " + src)); document.head.appendChild(s); });
+async function loadFx() {
+  if (RM) return;   // reduced motion: the static page is the experience
+  try {
+    await loadScript(CDN + "gsap@3.15.0/dist/gsap.min.js");
+    await Promise.all([loadScript(CDN + "gsap@3.15.0/dist/ScrollTrigger.min.js"), loadScript(CDN + "lenis@1.3.27/dist/lenis.min.js")]);
+  } catch (e) { console.warn("[globe] scroll effects unavailable:", e.message); return; }
+  const { gsap, ScrollTrigger } = window;
+  if (!gsap || !ScrollTrigger) return;
+  gsap.registerPlugin(ScrollTrigger);
+  ScrollTrigger.config({ ignoreMobileResize: true });
+  if (matchMedia("(pointer: fine)").matches && innerWidth >= 900 && window.Lenis) {
+    lenis = new window.Lenis();
+    S.lenis = lenis;
+    lenis.on("scroll", ScrollTrigger.update);
+    gsap.ticker.add((t) => lenis.raf(t * 1000));
+    gsap.ticker.lagSmoothing(0);
+    if (openBtn) lenis.stop();
+  }
+  // The globe: rotation and pose follow total scroll progress, smoothed by the scrub.
+  const proxy = { p: rawProgress() };
+  S.proxy = proxy;
+  gsap.to(proxy, { p: 1, ease: "none", onUpdate: wake, scrollTrigger: { start: 0, end: "max", scrub: 0.9, invalidateOnRefresh: true } });
+  ScrollTrigger.addEventListener("refresh", () => { computeKeys(); wake(); });
+  // One 3D entrance beat per section: heading tips up out of depth, children rise in.
+  for (const sec of $$(".sec")) {
+    const head = $(".sec-head", sec), kids = $$("[data-rise]", sec);
+    const tl = gsap.timeline({ scrollTrigger: { trigger: sec, start: "top 75%", once: true } });
+    tl.from(head, { opacity: 0, rotationX: 28, z: -180, y: 24, duration: 0.6, ease: "power3.out" });
+    if (kids.length) tl.from(kids, { opacity: 0, y: 12, rotationX: 10, z: -60, duration: 0.3, ease: "power2.out", stagger: 0.1, clearProps: "transform" }, "-=0.3");
+  }
+  ScrollTrigger.refresh();
+}
+requestAnimationFrame(() => setTimeout(loadFx, 0));
+
+/* =====================================================================
+   Let's talk: the split pill from the hero demo (metaball goo on a 2D canvas), glossy black
+   ===================================================================== */
+(() => {
+  const now = () => performance.now();
+  const talk = $("#talk"), pill = $("#talk-pill"), pillIn = $("#pill-in"), bE = $("#b-email"), bA = $("#b-ask");
+  const lE = bE.firstElementChild, lA = bA.firstElementChild;
+  const panel = $("#ask-panel"), askClose = $("#ask-close"), askForm = $("#ask-form"), askInput = $("#ask-q"), askStatus = $("#ask-status");
+  const gooC = $("#goo"), gctx = gooC.getContext("2d"), GAP = 14;
+  let gooOK = !!gctx && !RM, open = false, panelOpen = false;
+  let gW = 0, gH = 0, gd = 1, img = null, px32 = null, pw = 0, ph = 0, pillW = 0, wE = 0, wA = 0, cE = 0, cA = 0, H2 = 24;
+  const spring = { x: 0, v: 0, target: 0, k: 170, c: 17 };
+  const press = [0, 1, 2].map(() => ({ from: 1, to: 1, t0: 0, v: 1 }));
+  let gooRunning = false;
+  function measure() {
+    pillW = pill.offsetWidth; wE = bE.offsetWidth; wA = bA.offsetWidth; H2 = pill.offsetHeight / 2;
+    const rowW = wE + GAP + wA; cE = -rowW / 2 + wE / 2; cA = rowW / 2 - wA / 2;
+  }
+  function gooResize() {
+    measure();
+    gW = Math.min(Math.ceil(wE + wA + GAP + 120), innerWidth); gH = pill.offsetHeight + 56;
+    gd = Math.min(2, devicePixelRatio || 1);
+    pw = Math.round(gW * gd); ph = Math.round(gH * gd);
+    gooC.width = pw; gooC.height = ph; gooC.style.width = gW + "px"; gooC.style.height = gH + "px";
+    img = gctx.createImageData(pw, ph); px32 = new Uint32Array(img.data.buffer);
+  }
+  function pressVal(p, t) { const e = clamp01((t - p.t0) / 150); p.v = p.from + (p.to - p.from) * (1 - (1 - e) * (1 - e)); return e < 1; }
+  // Per-pixel smooth-min metaballs of two capsules, alpha-thresholded with 1px anti-aliasing.
+  function drawGoo(p) {
+    const pp = Math.max(p, 0), und = Math.max(-p, 0), s = smooth(0, 0.7, pp), bump = Math.sin(Math.PI * clamp01(pp));
+    const k = 20 * smooth(0, 0.22, pp) * (1 - smooth(0.6, 0.97, pp)) + 0.0001;
+    const f0 = press[0].v, f1 = press[1].v, f2 = press[2].v, fa = lerp(f0, f1, s), fb = lerp(f0, f2, s);
+    const wob = 1 + und * 0.45, wobR = 1 - und * 0.3, cx = gW / 2, cy = gH / 2;
+    const A = { x: cx + cE * pp, hw: lerp(pillW / 2, wE / 2, s) * (1 - 0.1 * bump) * fa * wob, r: H2 * (1 - 0.1 * bump) * fa * wobR };
+    const B = { x: cx + cA * pp, hw: lerp(pillW / 2, wA / 2, s) * (1 - 0.1 * bump) * fb * wob, r: H2 * (1 - 0.1 * bump) * fb * wobR };
+    A.s = Math.max(0, A.hw - A.r); B.s = Math.max(0, B.hw - B.r);
+    px32.fill(0);
+    const x0 = Math.max(0, Math.floor((Math.min(A.x - A.hw, B.x - B.hw) - k - 2) * gd));
+    const x1 = Math.min(pw, Math.ceil((Math.max(A.x + A.hw, B.x + B.hw) + k + 2) * gd));
+    const rMax = Math.max(A.r, B.r);
+    const y0 = Math.max(0, Math.floor((cy - rMax - k - 2) * gd)), y1 = Math.min(ph, Math.ceil((cy + rMax + k + 2) * gd));
+    const inv = 1 / gd, top = cy - rMax, span = 2 * rMax;
+    for (let y = y0; y < y1; y++) {
+      const fy = (y + 0.5) * inv, dy = fy - cy, dy2 = dy * dy, ty = clamp01((fy - top) / span);
+      const base = 32 - 25 * ty;            // glossy black: #202023 at the top to #070708
+      const rimK = 0.3 - 0.2 * ty;          // brighter rim along the top edge
+      const row = y * pw;
+      for (let x = x0; x < x1; x++) {
+        const fx = (x + 0.5) * inv;
+        let ax = Math.abs(fx - A.x) - A.s; if (ax < 0) ax = 0;
+        let bx = Math.abs(fx - B.x) - B.s; if (bx < 0) bx = 0;
+        const da = Math.sqrt(ax * ax + dy2) - A.r, db = Math.sqrt(bx * bx + dy2) - B.r;
+        const h = Math.max(k - Math.abs(da - db), 0) / k, d = (da < db ? da : db) - h * h * k * 0.25, dd = d * gd;
+        let a = 0.5 - dd; if (a <= 0) continue; if (a > 1) a = 1;
+        let rim = 1 - Math.abs(dd + 1.1) / 1.1; if (rim < 0) rim = 0; rim *= rimK;
+        const c = base + (245 - base) * rim, g = base + (245 - base) * rim, b2 = base + 1 + (247 - base) * rim;
+        px32[row + x] = ((a * 255) << 24) | ((b2 & 255) << 16) | ((g & 255) << 8) | (c & 255);
+      }
+    }
+    gctx.putImageData(img, 0, 0);
+    bE.style.transform = `translateX(${(cE * (pp - 1)).toFixed(2)}px)`;
+    bA.style.transform = `translateX(${(cA * (pp - 1)).toFixed(2)}px)`;
+    pillIn.style.opacity = (1 - clamp01((pp - 0.08) * 4)).toFixed(3);
+    talk.classList.toggle("merging", !open && pp > 0.2);
+    const lo = clamp01((pp - 0.55) * 4).toFixed(3); lE.style.opacity = lo; lA.style.opacity = lo;
+  }
+  let lastT = 0;
+  function gooFrame(t) {
+    const dt = Math.min(0.05, (t - lastT) / 1000 || 0.016); lastT = t;
+    const sub = 4, h = dt / sub;
+    for (let i = 0; i < sub; i++) { const a = -spring.k * (spring.x - spring.target) - spring.c * spring.v; spring.v += a * h; spring.x += spring.v * h; }
+    let busy = false;
+    for (const p of press) if (pressVal(p, t)) busy = true;
+    const settled = Math.abs(spring.x - spring.target) < 0.0015 && Math.abs(spring.v) < 0.01;
+    if (settled) { spring.x = spring.target; spring.v = 0; } else busy = true;
+    drawGoo(spring.x);
+    if (!open && settled) talk.classList.remove("show");
+    if (busy) requestAnimationFrame(gooFrame); else gooRunning = false;
+  }
+  function kickGoo() { if (!gooOK) return; if (!gooRunning) { gooRunning = true; lastT = now(); requestAnimationFrame(gooFrame); } }
+  function setMode() {
+    talk.classList.toggle("rm", !gooOK); root.classList.toggle("rm-mode", !gooOK); talk.classList.toggle("goo-on", gooOK);
+    gooC.style.display = gooOK ? "" : "none";
+    pill.tabIndex = 0;
+    if (gooOK) { gooResize(); spring.x = spring.target = open ? 1 : 0; spring.v = 0; drawGoo(spring.x); if (open) pill.tabIndex = -1; }
+  }
+  function openMenu() {
+    if (open) return;
+    open = true; talk.classList.add("open", "show"); pill.setAttribute("aria-expanded", "true");
+    if (gooOK) { pill.tabIndex = -1; Object.assign(spring, { target: 1, k: 190, c: 18 }); kickGoo(); }
+    bE.focus({ preventScroll: true });
+  }
+  function closeMenu(returnFocus) {
+    if (!open) return;
+    if (panelOpen) closePanel(false);
+    open = false; talk.classList.remove("open"); if (!gooOK) talk.classList.remove("show");
+    pill.setAttribute("aria-expanded", "false"); pill.tabIndex = 0;
+    if (gooOK) { Object.assign(spring, { target: 0, k: 260, c: 11 }); kickGoo(); }
+    if (returnFocus) pill.focus({ preventScroll: true });
+  }
+  let panelTimer = 0;
+  function openPanel() {
+    if (panelOpen) return;
+    panelOpen = true; clearTimeout(panelTimer); panel.hidden = false; bA.setAttribute("aria-expanded", "true");
+    void panel.offsetWidth; panel.classList.add("in"); askInput.focus({ preventScroll: true });
+  }
+  function closePanel(returnFocus) {
+    if (!panelOpen) return;
+    panelOpen = false; bA.setAttribute("aria-expanded", "false"); panel.classList.remove("in");
+    panelTimer = setTimeout(() => { panel.hidden = true; askStatus.textContent = ""; }, 160);
+    if (returnFocus) bA.focus({ preventScroll: true });
+  }
+  pill.addEventListener("click", () => (open ? closeMenu(true) : openMenu()));
+  bA.addEventListener("click", () => (panelOpen ? closePanel(true) : openPanel()));
+  askClose.addEventListener("click", () => closePanel(true));
+  askForm.addEventListener("submit", (e) => { e.preventDefault(); askStatus.textContent = "This isn't live yet, so nothing was sent. Email me in the meantime."; });
+  [pill, bE, bA].forEach((el, i) => {
+    const set = (to) => { if (!gooOK) return; const p = press[i]; pressVal(p, now()); p.from = p.v; p.to = to; p.t0 = now(); kickGoo(); };
+    el.addEventListener("pointerdown", () => set(0.96));
+    ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => el.addEventListener(ev, () => set(1)));
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || openBtn) return;
+    if (panelOpen) { e.preventDefault(); closePanel(true); } else if (open) { e.preventDefault(); closeMenu(true); }
+  });
+  document.addEventListener("pointerdown", (e) => {
+    if (!open || talk.contains(e.target) || panel.contains(e.target)) return;
+    const focusable = e.target.closest && e.target.closest("a[href],button,input,textarea,select,[tabindex]");
+    closeMenu(false);
+    if (!focusable) setTimeout(() => pill.focus({ preventScroll: true }), 0);
+  });
+  const within = (el) => talk.contains(el) || panel.contains(el);
+  [talk, panel].forEach((el) => el.addEventListener("focusout", () => {
+    setTimeout(() => { if (!open || !document.hasFocus()) return; const a = document.activeElement; if (!a || !within(a)) closeMenu(false); }, 0);
+  }));
+  let rz = 0;
+  addEventListener("resize", () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { if (gooOK) { gooResize(); drawGoo(spring.x); } }); });
+  setMode();
+  document.fonts?.ready.then(() => { if (gooOK) { gooResize(); drawGoo(spring.x); } });
+})();
+</script>
+</body>
+</html>
